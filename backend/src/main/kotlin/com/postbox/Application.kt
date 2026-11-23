@@ -1,6 +1,7 @@
 package com.postbox
 
 import com.postbox.db.Migrations
+import com.postbox.db.closeDatabase
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -33,7 +34,8 @@ fun Application.module(config: AppConfig) {
 fun main() {
     val config = ConfigLoader.load()
     ConfigLoader.ensureDataDir(config)
-    Migrations.run(config.sqlitePath)
+    val db = Migrations.run(config.sqlitePath)
+    Runtime.getRuntime().addShutdownHook(Thread { closeDatabase(db) })
     log.info(
         "Starting postbox backend on {}:{} (data dir: {}, sqlite: {})",
         config.host, config.port, config.dataDir, config.sqlitePath

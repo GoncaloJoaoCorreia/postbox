@@ -114,9 +114,19 @@ class ParcelRepository(private val db: Database) {
         }
     }
 
-    /** Returns affected rows — zero when the parcel belongs to another user. */
+    /**
+     * Deletes the parcel and its events in one transaction; returns affected
+     * parcel rows — zero when the parcel belongs to another user. The schema
+     * declares `ON DELETE CASCADE` and connections run with
+     * `PRAGMA foreign_keys = ON`, and the explicit event delete (scoped to an
+     * actually deleted parcel) keeps the invariant even without the pragma.
+     */
     fun deleteParcelForUser(userId: String, parcelId: String): Int = dbQuery(db) {
-        Parcels.deleteWhere { (Parcels.id eq parcelId) and (Parcels.userId eq userId) }
+        val deleted = Parcels.deleteWhere { (Parcels.id eq parcelId) and (Parcels.userId eq userId) }
+        if (deleted > 0) {
+            ParcelEvents.deleteWhere { ParcelEvents.parcelId eq parcelId }
+        }
+        deleted
     }
 
     /**
