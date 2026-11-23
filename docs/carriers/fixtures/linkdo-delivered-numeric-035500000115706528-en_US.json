@@ -1,0 +1,94 @@
+{
+  "packageParam": {
+    "dimWeight": {
+      "weight": "31",
+      "weightUnit": "g"
+    },
+    "outOrderId": "AP00100111265473",
+    "toZipcode": "[redacted]",
+    "trackingNumber": "035500000115706528"
+  },
+  "feature": "{}",
+  "success": "true",
+  "statuses": [
+    {
+      "deliveryLongitude": "[redacted]",
+      "imgUrl": "[redacted]",
+      "datetime": "2026-11-09 16:19:24 UTC+1",
+      "opTimestamp": "1794237564000",
+      "timezone": "1",
+      "statusName": "Delivery Success",
+      "deliveryLatitude": "[redacted]",
+      "description": "Your shipment has been delivered successfully",
+      "actionCode": "LM_SIGN_SUCCESS",
+      "opCode": "0",
+      "location": "Sant Joan d'Alacant"
+    },
+    {
+      "datetime": "2026-11-09 08:11:15 UTC+1",
+      "opTimestamp": "1794208275000",
+      "timezone": "1",
+      "statusName": "Out for Delivery",
+      "description": "Your shipment is out for delivery",
+      "actionCode": "LM_DELIVERY_DEPART",
+      "opCode": "0",
+      "location": "ES"
+    },
+    {
+      "datetime": "2026-11-08 05:52:07 UTC+1",
+      "opTimestamp": "1794113527000",
+      "timezone": "1",
+      "statusName": "Accepted by Last Mile",
+      "description": "Your shipment has been accepted by delivery carrier",
+      "actionCode": "SL_ACCEPT",
+      "opCode": "0",
+      "location": "ES"
+    },
+    {
+      "datetime": "2026-11-08 04:50:45 UTC+1",
+      "opTimestamp": "1794109845000",
+      "timezone": "1",
+      "statusName": "RT_SIGNIN_SUCCESS",
+      "description": "Your shipment has arrived at the transit destination",
+      "actionCode": "TRANSFER_ARRIVE",
+      "opCode": "0",
+      "location": "Alacant"
+    },
+    {
+      "datetime": "2026-11-07 22:48:20 UTC+1",
+      "opTimestamp": "1794088100000",
+      "timezone": "1",
+      "statusName": "Sorting Center Outbound",
+      "description": "Your shipment has been processed at sorting center and ready for shipping",
+      "actionCode": "SC_OUTBOUND",
+      "opCode": "0",
+      "location": "San Fernando de Henares"
+    },
+    {
+      "datetime": "2026-11-07 22:48:14 UTC+1",
+      "opTimestamp": "1794088094000",
+      "timezone": "1",
+      "statusName": "Your shipment has departed from the transit origin",
+      "description": "Your shipment has departed from the transit origin",
+      "actionCode": "TRANSFER_DEPART",
+      "opCode": "0",
+      "location": "madrid"
+    },
+    {
+      "datetime": "2026-11-07 19:58:35 UTC+1",
+      "opTimestamp": "1794077915000",
+      "timezone": "1",
+      "statusName": "Sorting Center Inbound",
+      "description": "Your shipment has arrived at sorting center",
+      "actionCode": "SC_INBOUND",
+      "opCode": "0",
+      "location": "San Fernando de Henares"
+    }
+  ],
+  "cainiaoId": "2220461610059",
+  "solutionParam": {
+    "bizSource": "other",
+    "logisticsMode": "other",
+    "solutionCode": "PES021"
+  }
+}

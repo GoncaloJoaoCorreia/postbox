@@ -1,0 +1,81 @@
+{
+  "packageParam": {
+    "dimWeight": {
+      "weight": "285",
+      "weightUnit": "g"
+    },
+    "outOrderId": "AP00100198198308",
+    "toZipcode": "[redacted]",
+    "trackingNumber": "CNPRT42500041234024382386"
+  },
+  "feature": "{}",
+  "success": "true",
+  "statuses": [
+    {
+      "datetime": "2026-11-23 08:40:51 UTC+0",
+      "opTimestamp": "1795423251000",
+      "timezone": "0",
+      "statusName": "En reparto",
+      "description": "Su envío está en reparto",
+      "actionCode": "LM_DELIVERY_DEPART",
+      "opCode": "0",
+      "location": "PT"
+    },
+    {
+      "datetime": "2026-11-23 08:40:50 UTC+0",
+      "opTimestamp": "1795423250000",
+      "timezone": "0",
+      "statusName": "Aceptado por la última milla",
+      "description": "Su envío ha sido recibido por la empresa de transporte",
+      "actionCode": "SL_ACCEPT",
+      "opCode": "0",
+      "location": "PT"
+    },
+    {
+      "datetime": "2026-11-23 05:00:01 UTC+1",
+      "opTimestamp": "1795406401000",
+      "timezone": "1",
+      "statusName": "Su envío ha llegado al destino de tránsito",
+      "description": "Su envío ha llegado al destino de tránsito",
+      "actionCode": "TRANSFER_ARRIVE",
+      "opCode": "0",
+      "location": "Porto"
+    },
+    {
+      "datetime": "2026-11-22 19:43:39 UTC+1",
+      "opTimestamp": "1795373019000",
+      "timezone": "1",
+      "statusName": "Salida del centro de clasificación",
+      "description": "Su envío ha sido procesado en el centro de clasificación y está listo para envío",
+      "actionCode": "SC_OUTBOUND",
+      "opCode": "0",
+      "location": "San Fernando de Henares"
+    },
+    {
+      "datetime": "2026-11-22 19:43:19 UTC+1",
+      "opTimestamp": "1795372999000",
+      "timezone": "1",
+      "statusName": "Su envío ha salido desde el origen de tránsito",
+      "description": "Su envío ha salido desde el origen de tránsito",
+      "actionCode": "TRANSFER_DEPART",
+      "opCode": "0",
+      "location": "madrid"
+    },
+    {
+      "datetime": "2026-11-22 11:02:23 UTC+1",
+      "opTimestamp": "1795341743000",
+      "timezone": "1",
+      "statusName": "Llegada al centro de clasificación",
+      "description": "Su paquete ha llegado al centro de clasificación",
+      "actionCode": "SC_INBOUND",
+      "opCode": "0",
+      "location": "San Fernando de Henares"
+    }
+  ],
+  "cainiaoId": "2220461610059",
+  "solutionParam": {
+    "bizSource": "other",
+    "logisticsMode": "other",
+    "solutionCode": "PES012"
+  }
+}

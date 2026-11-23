@@ -1,0 +1,156 @@
+{
+  "packageParam": {
+    "dimWeight": {
+      "weight": "360",
+      "weightUnit": "g"
+    },
+    "outOrderId": "AP00822684385639",
+    "toZipcode": "[redacted]",
+    "trackingNumber": "086910000095415073"
+  },
+  "feature": "{}",
+  "success": "true",
+  "statuses": [
+    {
+      "datetime": "2026-06-16 12:55:05 UTC+1",
+      "statusGroup": "delivered",
+      "opTimestamp": "1781610905000",
+      "timezone": "1",
+      "icon": "icondelivery4",
+      "statusName": "PUDO Sign Success",
+      "description": "Your shipment has been collected by consignee at the parcelshop",
+      "actionCode": "PUDO_SIGN_SUCCESS",
+      "opCode": "0",
+      "location": "Monistrol de Montserrat",
+      "status": "finish"
+    },
+    {
+      "datetime": "2026-06-16 11:55:33 UTC+1",
+      "statusGroup": "ready_for_collection",
+      "opTimestamp": "1781607333000",
+      "timezone": "1",
+      "icon": "iconTrackYourPackage",
+      "statusName": "PUDO Inbound Success",
+      "description": "Your shipment has arrived at parcelshop and you‘ll receive pickup instructions shortly",
+      "actionCode": "PUDO_INBOUND",
+      "opCode": "0",
+      "location": "ES",
+      "status": "finish"
+    },
+    {
+      "deliveryLongitude": "[redacted]",
+      "statusGroup": "ready_for_collection",
+      "timezone": "2",
+      "icon": "iconTrackYourPackage",
+      "deliveryLatitude": "[redacted]",
+      "description": "Your package has been processed by the courier. We will notify you when it is ready for pickup at the point.",
+      "imgUrl": "[redacted]",
+      "datetime": "2026-06-16 11:54:51 UTC+2",
+      "opTimestamp": "1781603691000",
+      "statusName": "Delivered to PUDO",
+      "actionCode": "PUDO_DELIVERY",
+      "opCode": "0",
+      "location": "Barcelona",
+      "status": "finish"
+    },
+    {
+      "datetime": "2026-06-16 11:05:34 UTC+2",
+      "statusGroup": "delivering",
+      "opTimestamp": "1781600734000",
+      "timezone": "2",
+      "icon": "icontracking2",
+      "statusName": "Out for Delivery",
+      "description": "Your shipment is out for delivery",
+      "actionCode": "LM_DELIVERY_DEPART",
+      "opCode": "0",
+      "location": "Barcelona",
+      "status": "finish"
+    },
+    {
+      "datetime": "2026-06-14 14:46:51 UTC+2",
+      "statusGroup": "delivering",
+      "opTimestamp": "1781441211000",
+      "timezone": "2",
+      "icon": "icontracking2",
+      "statusName": "Out for Delivery",
+      "description": "Your shipment is out for delivery",
+      "actionCode": "LM_DELIVERY_DEPART",
+      "opCode": "0",
+      "location": "Barcelona",
+      "status": "finish"
+    },
+    {
+      "datetime": "2026-06-12 07:32:37 UTC+2",
+      "statusGroup": "in_transit",
+      "opTimestamp": "1781242357000",
+      "timezone": "2",
+      "icon": "iconwarehouse-",
+      "statusName": "Accepted by Last Mile",
+      "description": "Your shipment has been accepted by delivery carrier",
+      "actionCode": "SL_ACCEPT",
+      "opCode": "0",
+      "location": "Barcelona",
+      "status": "finish"
+    },
+    {
+      "datetime": "2026-06-12 05:20:40 UTC+2",
+      "opTimestamp": "1781234440000",
+      "timezone": "2",
+      "statusName": "RT_SIGNIN_SUCCESS",
+      "description": "Your shipment has arrived at the transit destination",
+      "actionCode": "TRANSFER_ARRIVE",
+      "opCode": "0",
+      "location": "ES"
+    },
+    {
+      "datetime": "2026-06-11 20:55:59 UTC+2",
+      "statusGroup": "in_transit",
+      "opTimestamp": "1781204159000",
+      "timezone": "2",
+      "icon": "iconTrackYourPackage",
+      "statusName": "Sorting Center Outbound",
+      "description": "Your shipment has been processed at sorting center and ready for shipping",
+      "actionCode": "SC_OUTBOUND",
+      "opCode": "0",
+      "location": "San Fernando de Henares",
+      "status": "finish"
+    },
+    {
+      "datetime": "2026-06-11 20:55:56 UTC+2",
+      "opTimestamp": "1781204156000",
+      "timezone": "2",
+      "statusName": "Your shipment has departed from the transit origin",
+      "description": "Your shipment has departed from the transit origin",
+      "actionCode": "TRANSFER_DEPART",
+      "opCode": "0",
+      "location": "ES"
+    },
+    {
+      "datetime": "2026-06-11 07:38:47 UTC+2",
+      "statusGroup": "in_transit",
+      "opTimestamp": "1781156327000",
+      "timezone": "2",
+      "icon": "iconTrackYourPackage",
+      "statusName": "Sorting Center Inbound",
+      "description": "Your shipment has arrived at sorting center",
+      "actionCode": "SC_INBOUND",
+      "opCode": "0",
+      "location": "San Fernando de Henares",
+      "status": "finish"
+    }
+  ],
+  "cainiaoId": "2220461610059",
+  "solutionParam": {
+    "bizSource": "other",
+    "logisticsMode": "other",
+    "solutionCode": "PES012"
+  },
+  "popStationParam": {
+    "officeTime": "Monday(09:30-12:50, 15:00-18:50)Tuesday(09:30-12:50, 15:00-18:50)Wednesday(09:30-12:50, 15:00-18:50)Thursday(09:30-12:50, 15:00-18:50)Friday(09:30-12:50, 15:00-18:50)Saturday(09:30-12:00)",
+    "phone": "+34999999999",
+    "pinCode": "7212",
+    "popStationId": "6567625",
+    "detailAddress": "Plaza FONT GRAN, 5, Monistrol De Montserrat, Barcelona",
+    "stationName": "ARI PELUQUERIA"
+  }
+}

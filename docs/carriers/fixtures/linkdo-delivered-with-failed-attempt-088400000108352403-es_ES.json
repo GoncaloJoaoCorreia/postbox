@@ -1,0 +1,107 @@
+{
+  "packageParam": {
+    "dimWeight": {
+      "weight": "327",
+      "weightUnit": "g"
+    },
+    "outOrderId": "SYES013900355_06015019",
+    "toZipcode": "[redacted]",
+    "trackingNumber": "088400000108352403"
+  },
+  "feature": "{}",
+  "success": "true",
+  "statuses": [
+    {
+      "deliveryLongitude": "[redacted]",
+      "imgUrl": "[redacted]",
+      "datetime": "2026-09-21 18:02:54 UTC+2",
+      "opTimestamp": "1790006574000",
+      "timezone": "2",
+      "statusName": "Entrega correcta",
+      "deliveryLatitude": "[redacted]",
+      "description": "Su envío ha sido entregado correctamente",
+      "actionCode": "LM_SIGN_SUCCESS",
+      "opCode": "0",
+      "location": "Viladecans"
+    },
+    {
+      "datetime": "2026-09-21 10:00:21 UTC+2",
+      "opTimestamp": "1789977621000",
+      "timezone": "2",
+      "statusName": "En reparto",
+      "description": "Su envío está en reparto",
+      "actionCode": "LM_DELIVERY_DEPART",
+      "opCode": "0",
+      "location": "Barcelona"
+    },
+    {
+      "deliveryLongitude": "[redacted]",
+      "imgUrl": "[redacted]",
+      "datetime": "2026-09-19 16:47:10 UTC+2",
+      "opTimestamp": "1789829230000",
+      "timezone": "2",
+      "statusName": "Intento de entrega fallido",
+      "deliveryLatitude": "[redacted]",
+      "description": "Intento de entrega fallido [No se puede entregar fuera del horario comercial]",
+      "actionCode": "LM_DELIVERY_FAILURE",
+      "opCode": "5576",
+      "location": "Barcelona"
+    },
+    {
+      "datetime": "2026-09-19 09:40:32 UTC+2",
+      "opTimestamp": "1789803632000",
+      "timezone": "2",
+      "statusName": "En reparto",
+      "description": "Su envío está en reparto",
+      "actionCode": "LM_DELIVERY_DEPART",
+      "opCode": "0",
+      "location": "Barcelona"
+    },
+    {
+      "datetime": "2026-09-19 05:15:38 UTC+2",
+      "opTimestamp": "1789787738000",
+      "timezone": "2",
+      "statusName": "Aceptado por la última milla",
+      "description": "Su envío ha sido recibido por la empresa de transporte",
+      "actionCode": "SL_ACCEPT",
+      "opCode": "0",
+      "location": "Barcelona"
+    },
+    {
+      "datetime": "2026-09-18 20:25:53 UTC+2",
+      "opTimestamp": "1789755953000",
+      "timezone": "2",
+      "statusName": "Salida del centro de clasificación",
+      "description": "Su envío ha sido procesado en el centro de clasificación y está listo para envío",
+      "actionCode": "SC_OUTBOUND",
+      "opCode": "0",
+      "location": "San Fernando de Henares"
+    },
+    {
+      "datetime": "2026-09-18 14:04:19 UTC+2",
+      "opTimestamp": "1789733059000",
+      "timezone": "2",
+      "statusName": "Llegada al centro de clasificación",
+      "description": "Su paquete ha llegado al centro de clasificación",
+      "actionCode": "SC_INBOUND",
+      "opCode": "0",
+      "location": "San Fernando de Henares"
+    },
+    {
+      "datetime": "2026-09-05 18:50:20 UTC+1",
+      "opTimestamp": "1788630620000",
+      "timezone": "1",
+      "statusName": "create",
+      "description": "Pedido de envío creado",
+      "actionCode": "CREATE_ORDER_CES",
+      "opCode": "0",
+      "location": "ES"
+    }
+  ],
+  "cainiaoId": "2218446898018",
+  "solutionParam": {
+    "bizSource": "other",
+    "logisticsMode": "other",
+    "solutionCode": "PES012"
+  }
+}
