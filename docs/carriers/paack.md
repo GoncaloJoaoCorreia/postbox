@@ -201,15 +201,17 @@ In `docs/carriers/paack/fixtures/`:
   document variant, unknown number `XX000000000000`.
 - `missing-params-400.txt` — 400 + `x-remix-catch` + `Missing required parameters`.
 - `out-for-delivery-200.json` + `out-for-delivery-200.headers.txt` — real 200 response
-  (parcel out for delivery; eventList `manifested → scannedAtOrigin → inDelivery →
+  while out for delivery (eventList `manifested → scannedAtOrigin → inDelivery →
   delivered(pending)`), personal data redacted (ids, retailer, post_code, tracking
   number replaced with placeholders).
+- `delivered-200.json` + `delivered-200.headers.txt` — same parcel after delivery:
+  `activeEvent` = `SP003 delivered` with `timestamp` set and `status: "success"`,
+  `secondary_section: "review"`; `eventList` ends with the delivered event instead of a
+  pending one. Also shows the extra top-level `rating` key.
 
 ## TODOs
 
-- Capture a real **delivered** fixture (parcel `534000021268935007` was out for delivery
-  on 2026-11-23, window 08:00–21:00 UTC — a re-poll is scheduled) and a real
-  **failed attempt** fixture to confirm the exact `variables.*[].path` that carries the
-  free-text failure reason.
+- Capture a real **failed attempt** fixture to confirm the exact `variables.*[].path`
+  that carries the free-text failure reason.
 - Related resource routes seen in the bundle (not needed for tracking): `POST
   /shipments/api/push-subscribe`, `POST /shipments/api/tracker/rating` (`action=store_rating`).
