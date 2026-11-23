@@ -1,0 +1,17 @@
+# Fixture: missing required parameter (no postal_code)
+# Captured: 2026-11-23 ~13:18 UTC via curl
+# Request: GET https://paack.co/shipments/tracking/order?tracking_number=534000021268935007&_data=routes%2Ftracking.order
+
+HTTP/2 400 
+date: Mon, 23 Nov 2026 13:36:18 GMT
+content-type: text/plain;charset=UTF-8
+x-remix-catch: yes
+vary: Accept-Encoding
+cf-apo-via: origin,qs
+x-cloud-trace-context: 3efb27984fa2203a9ca0aea78e808623
+server: cloudflare
+via: 1.1 google
+cf-cache-status: DYNAMIC
+cf-ray: a5f08fe2d92b4895-LIS
+
+Missing required parameters
