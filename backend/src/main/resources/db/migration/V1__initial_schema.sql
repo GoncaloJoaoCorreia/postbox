@@ -28,7 +28,7 @@ CREATE INDEX idx_parcels_user_id ON parcels(user_id);
 
 CREATE TABLE parcel_events (
     id TEXT PRIMARY KEY,
-    parcel_id TEXT NOT NULL REFERENCES parcels(id),
+    parcel_id TEXT NOT NULL REFERENCES parcels(id) ON DELETE CASCADE,
     occurred_at TEXT NOT NULL,
     status TEXT NOT NULL,
     description TEXT NOT NULL,

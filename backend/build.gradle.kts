@@ -23,7 +23,6 @@ dependencies {
     implementation(libs.logstash.logback.encoder)
     implementation(libs.exposed.core)
     implementation(libs.exposed.jdbc)
-    implementation(libs.exposed.java.time)
     implementation(libs.sqlite.jdbc)
 
     testImplementation(libs.ktor.server.test.host)
