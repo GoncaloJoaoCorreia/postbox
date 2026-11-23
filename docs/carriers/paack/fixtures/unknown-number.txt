@@ -1,0 +1,32 @@
+# Fixture: unknown tracking number (data request, Remix _data form)
+# Captured: 2026-11-23 ~13:12 UTC via curl (no cookies, no auth headers)
+# Request: GET https://paack.co/shipments/tracking/order?tracking_number=XX000000000000&postal_code=28001&_data=routes%2Ftracking.order
+
+HTTP/2 204 
+date: Mon, 23 Nov 2026 13:36:18 GMT
+content-type: text/html
+x-remix-redirect: /tracking?postal_code=28001&tracking_number=XX000000000000&err=true
+x-remix-status: 302
+x-cloud-trace-context: b14788fcee14d9c96695c7cffcc8962d
+server: cloudflare
+via: 1.1 google
+cf-cache-status: DYNAMIC
+cf-apo-via: origin,qs
+cf-ray: a5f08fdf4a7af55c-LIS
+
+# body bytes:        0
+
+# Same case as a document request (no _data):
+# Request: GET https://paack.co/shipments/tracking/order?tracking_number=XX000000000000&postal_code=28001
+
+HTTP/2 302 
+date: Mon, 23 Nov 2026 13:36:18 GMT
+content-type: text/html
+location: /tracking?postal_code=28001&tracking_number=XX000000000000&err=true
+x-cloud-trace-context: a4683ee160e3f7299106258f991f75b2
+server: cloudflare
+via: 1.1 google
+cf-cache-status: DYNAMIC
+cf-apo-via: origin,qs
+cf-ray: a5f08fe13bf5c554-LIS
+

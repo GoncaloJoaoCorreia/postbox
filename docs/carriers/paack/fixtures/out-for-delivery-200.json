@@ -1,0 +1,508 @@
+{
+  "activeEvent": {
+    "id": "SP002",
+    "label": "inDelivery",
+    "timeline": true,
+    "icon": "Truck-Side",
+    "next_id": "SP003",
+    "variables": {
+      "Header": [
+        {
+          "poe": "hourTimeslotStarts",
+          "path": "expected_delivery_ts.start",
+          "field_type": "time"
+        },
+        {
+          "poe": "hourTimeslotEnds",
+          "path": "expected_delivery_ts.end",
+          "field_type": "time"
+        }
+      ],
+      "Text": [
+        {
+          "poe": "retailerName",
+          "path": "retailer_name"
+        }
+      ],
+      "Summary": [
+        {
+          "poe": "retailerName",
+          "path": "retailer_name"
+        }
+      ]
+    },
+    "event_type": "direct",
+    "uniq_id": "2026-11-23 10:13:13 +0000 UTCSP0020",
+    "timestamp": "2026-11-23T10:13:13.000Z",
+    "location": {
+      "city": null,
+      "country": "PT"
+    }
+  },
+  "eventList": [
+    {
+      "id": "SM001",
+      "label": "manifested",
+      "timeline": true,
+      "next_id": "SM002",
+      "icon": "Store",
+      "variables": {
+        "Header": [
+          {
+            "poe": "date",
+            "path": "expected_delivery_ts.end",
+            "field_type": "date"
+          },
+          {
+            "poe": "hourTimeslotStarts",
+            "path": "expected_delivery_ts.start",
+            "field_type": "time"
+          },
+          {
+            "poe": "hourTimeslotEnds",
+            "path": "expected_delivery_ts.end",
+            "field_type": "time"
+          }
+        ],
+        "Text": [
+          {
+            "poe": "retailerName",
+            "path": "retailer_name"
+          }
+        ],
+        "Summary": [
+          {
+            "poe": "retailerName",
+            "path": "retailer_name"
+          }
+        ]
+      },
+      "event_type": "direct",
+      "uniq_id": "2026-11-21 14:15:52 +0000 UTCSM0014",
+      "timestamp": "2026-11-21T14:15:52.000Z",
+      "location": {
+        "city": null,
+        "country": "PT"
+      }
+    },
+    {
+      "id": "SM002",
+      "label": "scannedAtOrigin",
+      "timeline": true,
+      "next_id": "SP002",
+      "icon": "Box-Filled",
+      "variables": {
+        "Header": [
+          {
+            "poe": "date",
+            "path": "expected_delivery_ts.end",
+            "field_type": "date"
+          },
+          {
+            "poe": "hourTimeslotStarts",
+            "path": "expected_delivery_ts.start",
+            "field_type": "time"
+          },
+          {
+            "poe": "hourTimeslotEnds",
+            "path": "expected_delivery_ts.end",
+            "field_type": "time"
+          }
+        ],
+        "Text": [
+          {
+            "poe": "retailerName",
+            "path": "retailer_name"
+          }
+        ]
+      },
+      "event_type": "direct",
+      "uniq_id": "2026-11-21 16:10:36 +0000 UTCSM0023",
+      "timestamp": "2026-11-21T16:10:36.000Z",
+      "location": {
+        "city": null,
+        "country": "PT"
+      }
+    },
+    {
+      "id": "SP002",
+      "label": "inDelivery",
+      "timeline": true,
+      "icon": "Truck-Side",
+      "next_id": "SP003",
+      "variables": {
+        "Header": [
+          {
+            "poe": "hourTimeslotStarts",
+            "path": "expected_delivery_ts.start",
+            "field_type": "time"
+          },
+          {
+            "poe": "hourTimeslotEnds",
+            "path": "expected_delivery_ts.end",
+            "field_type": "time"
+          }
+        ],
+        "Text": [
+          {
+            "poe": "retailerName",
+            "path": "retailer_name"
+          }
+        ],
+        "Summary": [
+          {
+            "poe": "retailerName",
+            "path": "retailer_name"
+          }
+        ]
+      },
+      "event_type": "direct",
+      "uniq_id": "2026-11-23 10:13:13 +0000 UTCSP0020",
+      "timestamp": "2026-11-23T10:13:13.000Z",
+      "location": {
+        "city": null,
+        "country": "PT"
+      }
+    },
+    {
+      "id": "SP003",
+      "label": "delivered",
+      "status": "success",
+      "timeline": true,
+      "variables": {
+        "Header": [],
+        "Text": [
+          {
+            "poe": "retailerName",
+            "path": "retailer_name"
+          },
+          {
+            "poe": "date",
+            "path": "events.timestamp",
+            "field_type": "date",
+            "condition": {
+              "sourceField": "id",
+              "operator": "eq",
+              "value": "SP003"
+            }
+          },
+          {
+            "poe": "time",
+            "path": "events.timestamp",
+            "field_type": "time",
+            "condition": {
+              "sourceField": "id",
+              "operator": "eq",
+              "value": "SP003"
+            }
+          }
+        ],
+        "Meta": [
+          {
+            "poe": "deliveryDateLabel",
+            "path": "events.timestamp",
+            "field_type": "date",
+            "format": "ddmmyy",
+            "condition": {
+              "sourceField": "id",
+              "operator": "eq",
+              "value": "SP003"
+            }
+          }
+        ]
+      },
+      "secondary_section": "review",
+      "event_type": "direct",
+      "uniq_id": "SP003"
+    }
+  ],
+  "feedbackSuccess": false,
+  "orderTrackData": {
+    "retailer_name": "<retailer>",
+    "order_id": "<redacted>",
+    "family_id": "<redacted>",
+    "service_type": "",
+    "retailer_id": "<uuid>",
+    "external_id": "<redacted>",
+    "tracking_id": "<redacted>",
+    "parcel_amount": 1,
+    "delivery_type": "direct",
+    "expected_delivery_ts": {
+      "start": "2026-11-23T08:00:00.000Z",
+      "end": "2026-11-23T21:00:00.000Z"
+    },
+    "expected_pickup_ts": {
+      "start": "2026-11-23T06:00:00.000Z",
+      "end": "2026-11-23T21:00:00.000Z"
+    },
+    "full_name": null,
+    "email": null,
+    "phone_number": null,
+    "delivery_address": {
+      "country": "PT",
+      "post_code": "<redacted>"
+    },
+    "pudo_id": null,
+    "pudo_name": null,
+    "pudo_expiration_date": null,
+    "pudo_address": "",
+    "events": [
+      {
+        "uniq_id": "2026-11-21 14:15:52 +0000 UTCSM0014",
+        "id": "SM001",
+        "timestamp": "2026-11-21T14:15:52.000Z",
+        "location": {
+          "city": null,
+          "country": "PT"
+        }
+      },
+      {
+        "uniq_id": "2026-11-21 16:10:36 +0000 UTCSM0023",
+        "id": "SM002",
+        "timestamp": "2026-11-21T16:10:36.000Z",
+        "location": {
+          "city": null,
+          "country": "PT"
+        }
+      },
+      {
+        "uniq_id": "2026-11-22 07:37:04 +0000 UTCSP0012",
+        "id": "SP001",
+        "timestamp": "2026-11-22T07:37:04.000Z",
+        "location": {
+          "city": null,
+          "country": "PT"
+        }
+      },
+      {
+        "uniq_id": "2026-11-23 09:34:18 +0000 UTCSP0211",
+        "id": "SP021",
+        "timestamp": "2026-11-23T09:34:18.000Z",
+        "location": {
+          "city": null,
+          "country": "PT"
+        }
+      },
+      {
+        "uniq_id": "2026-11-23 10:13:13 +0000 UTCSP0020",
+        "id": "SP002",
+        "timestamp": "2026-11-23T10:13:13.000Z",
+        "location": {
+          "city": null,
+          "country": "PT"
+        }
+      }
+    ],
+    "passcode": null,
+    "pudo_passcode": null
+  },
+  "profileMismatch": false,
+  "title": "Paack | Track your order",
+  "trackingContactProvided": false,
+  "triggeredEventList": [
+    {
+      "id": "SP002",
+      "label": "inDelivery",
+      "timeline": true,
+      "icon": "Truck-Side",
+      "next_id": "SP003",
+      "variables": {
+        "Header": [
+          {
+            "poe": "hourTimeslotStarts",
+            "path": "expected_delivery_ts.start",
+            "field_type": "time"
+          },
+          {
+            "poe": "hourTimeslotEnds",
+            "path": "expected_delivery_ts.end",
+            "field_type": "time"
+          }
+        ],
+        "Text": [
+          {
+            "poe": "retailerName",
+            "path": "retailer_name"
+          }
+        ],
+        "Summary": [
+          {
+            "poe": "retailerName",
+            "path": "retailer_name"
+          }
+        ]
+      },
+      "event_type": "direct",
+      "uniq_id": "2026-11-23 10:13:13 +0000 UTCSP0020",
+      "timestamp": "2026-11-23T10:13:13.000Z",
+      "location": {
+        "city": null,
+        "country": "PT"
+      }
+    },
+    {
+      "id": "SP021",
+      "label": "driverAssigned",
+      "timeline": false,
+      "variables": {
+        "Header": [],
+        "Text": [],
+        "Summary": [
+          {
+            "poe": "retailerName",
+            "path": "retailer_name"
+          }
+        ]
+      },
+      "event_type": "direct",
+      "uniq_id": "2026-11-23 09:34:18 +0000 UTCSP0211",
+      "timestamp": "2026-11-23T09:34:18.000Z",
+      "location": {
+        "city": null,
+        "country": "PT"
+      }
+    },
+    {
+      "id": "SP001",
+      "label": "inProgress",
+      "timeline": false,
+      "variables": {
+        "Header": [],
+        "Text": []
+      },
+      "event_type": "direct",
+      "uniq_id": "2026-11-22 07:37:04 +0000 UTCSP0012",
+      "timestamp": "2026-11-22T07:37:04.000Z",
+      "location": {
+        "city": null,
+        "country": "PT"
+      }
+    },
+    {
+      "id": "SM002",
+      "label": "scannedAtOrigin",
+      "timeline": true,
+      "next_id": "SP002",
+      "icon": "Box-Filled",
+      "variables": {
+        "Header": [
+          {
+            "poe": "date",
+            "path": "expected_delivery_ts.end",
+            "field_type": "date"
+          },
+          {
+            "poe": "hourTimeslotStarts",
+            "path": "expected_delivery_ts.start",
+            "field_type": "time"
+          },
+          {
+            "poe": "hourTimeslotEnds",
+            "path": "expected_delivery_ts.end",
+            "field_type": "time"
+          }
+        ],
+        "Text": [
+          {
+            "poe": "retailerName",
+            "path": "retailer_name"
+          }
+        ]
+      },
+      "event_type": "direct",
+      "uniq_id": "2026-11-21 16:10:36 +0000 UTCSM0023",
+      "timestamp": "2026-11-21T16:10:36.000Z",
+      "location": {
+        "city": null,
+        "country": "PT"
+      }
+    },
+    {
+      "id": "SM001",
+      "label": "manifested",
+      "timeline": true,
+      "next_id": "SM002",
+      "icon": "Store",
+      "variables": {
+        "Header": [
+          {
+            "poe": "date",
+            "path": "expected_delivery_ts.end",
+            "field_type": "date"
+          },
+          {
+            "poe": "hourTimeslotStarts",
+            "path": "expected_delivery_ts.start",
+            "field_type": "time"
+          },
+          {
+            "poe": "hourTimeslotEnds",
+            "path": "expected_delivery_ts.end",
+            "field_type": "time"
+          }
+        ],
+        "Text": [
+          {
+            "poe": "retailerName",
+            "path": "retailer_name"
+          }
+        ],
+        "Summary": [
+          {
+            "poe": "retailerName",
+            "path": "retailer_name"
+          }
+        ]
+      },
+      "event_type": "direct",
+      "uniq_id": "2026-11-21 14:15:52 +0000 UTCSM0014",
+      "timestamp": "2026-11-21T14:15:52.000Z",
+      "location": {
+        "city": null,
+        "country": "PT"
+      }
+    }
+  ],
+  "__meta__": {
+    "activeEvent.timestamp": "date",
+    "activeEvent.location.city": "undefined",
+    "eventList.0.timestamp": "date",
+    "eventList.0.location.city": "undefined",
+    "eventList.1.timestamp": "date",
+    "eventList.1.location.city": "undefined",
+    "eventList.2.timestamp": "date",
+    "eventList.2.location.city": "undefined",
+    "orderTrackData.expected_delivery_ts.start": "date",
+    "orderTrackData.expected_delivery_ts.end": "date",
+    "orderTrackData.expected_pickup_ts.start": "date",
+    "orderTrackData.expected_pickup_ts.end": "date",
+    "orderTrackData.full_name": "undefined",
+    "orderTrackData.email": "undefined",
+    "orderTrackData.phone_number": "undefined",
+    "orderTrackData.pudo_id": "undefined",
+    "orderTrackData.pudo_name": "undefined",
+    "orderTrackData.pudo_expiration_date": "undefined",
+    "orderTrackData.events.0.timestamp": "date",
+    "orderTrackData.events.0.location.city": "undefined",
+    "orderTrackData.events.1.timestamp": "date",
+    "orderTrackData.events.1.location.city": "undefined",
+    "orderTrackData.events.2.timestamp": "date",
+    "orderTrackData.events.2.location.city": "undefined",
+    "orderTrackData.events.3.timestamp": "date",
+    "orderTrackData.events.3.location.city": "undefined",
+    "orderTrackData.events.4.timestamp": "date",
+    "orderTrackData.events.4.location.city": "undefined",
+    "orderTrackData.passcode": "undefined",
+    "orderTrackData.pudo_passcode": "undefined",
+    "triggeredEventList.0.timestamp": "date",
+    "triggeredEventList.0.location.city": "undefined",
+    "triggeredEventList.1.timestamp": "date",
+    "triggeredEventList.1.location.city": "undefined",
+    "triggeredEventList.2.timestamp": "date",
+    "triggeredEventList.2.location.city": "undefined",
+    "triggeredEventList.3.timestamp": "date",
+    "triggeredEventList.3.location.city": "undefined",
+    "triggeredEventList.4.timestamp": "date",
+    "triggeredEventList.4.location.city": "undefined"
+  }
+}

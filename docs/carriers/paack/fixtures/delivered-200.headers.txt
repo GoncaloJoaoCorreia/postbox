@@ -1,0 +1,11 @@
+HTTP/2 200 
+date: Mon, 23 Nov 2026 17:30:53 GMT
+content-type: application/json; charset=utf-8
+x-remix-response: yes
+vary: Accept-Encoding
+cf-apo-via: origin,qs
+server: cloudflare
+via: 1.1 google
+cf-cache-status: DYNAMIC
+cf-ray: a5f1e77f3f4dff4e-LIS
+
