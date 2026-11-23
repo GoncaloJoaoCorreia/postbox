@@ -1,0 +1,109 @@
+{
+  "http": 200,
+  "response": {
+    "versionInfo": {
+      "hasModuleVersionChanged": false,
+      "hasApiVersionChanged": false
+    },
+    "data": {
+      "Result": {
+        "isIpLocked": false,
+        "IsObjectsLengthBiggerThan25": false,
+        "Result": {
+          "Success": true,
+          "ErrorMessage": ""
+        }
+      },
+      "ObjectLastEvents": {
+        "List": [
+          {
+            "ObjectCode": "DD506882333PT",
+            "ObjectImageURL": "",
+            "ObjectSenderImageURL": "",
+            "ObjectSenderImageUrlSmall": "",
+            "RelabelObjectCode": "",
+            "ObjectName": "DD506882333PT",
+            "IsTracked": false,
+            "Found": true,
+            "CustomsPurposes": false,
+            "Sender": "",
+            "SenderCountryCode": "",
+            "Recipient": "",
+            "RecipientCountryCode": "PT",
+            "RecipientAddress": "[redacted]",
+            "RecipientPostalCodeAndTown": "[redacted]",
+            "RecipientTimeSlot": "",
+            "UserEmailMatch": false,
+            "UserSenderMatch": false,
+            "UserRecipientMatch": false,
+            "UserPhoneMatches": false,
+            "IsLocker": false,
+            "LockerName": "[redacted]",
+            "CreationDate": "1900-01-01T00:00:00",
+            "ClearanceDate": "1900-01-01T00:00:00",
+            "DeliveryTimeSlot": "",
+            "DeliveryDeadlineEnd": "1900-01-01T00:00:00",
+            "DeliveryDeadlineDayAndMonthForStories": "",
+            "CTTObject": true,
+            "Carrier": "0",
+            "CarrierID": 0,
+            "CarrierLogoURL": "",
+            "ContractNumber": "[redacted]",
+            "ClientNumber": "[redacted]",
+            "FollowObject_Status": 0,
+            "ClientContractCompanyName": "",
+            "SenderLogo": "0",
+            "IsOpenStory": false,
+            "ShipmentProduct": "",
+            "ClientReference": "",
+            "IsB2C": false,
+            "ObjectNexus": "FALSE",
+            "LastEvent": {
+              "DateTime": "2026-11-21T10:40:46Z",
+              "DateMonthText": "",
+              "State": "Entregue",
+              "StateId": 12,
+              "Event": "O envio foi entregue. O processo de envio terminou.",
+              "EventCode": "EMI",
+              "EventColorType": 0,
+              "Local": "Centro operacional Porto",
+              "Situation": "",
+              "Reason": "",
+              "Progress": 100,
+              "PointCode": "",
+              "ReceptorName": "[redacted]",
+              "LockerName": "[redacted]",
+              "WithdrawalDate": "1900-01-01",
+              "WithdrawalDateMonthText": "",
+              "TypeOfTimelineEvent": "0",
+              "Nexus": "FALSE",
+              "DestinationNodeName": ""
+            },
+            "JoinedDeliveries": {
+              "JoinedDeliveryId": "",
+              "IsPrincipalCode": false
+            },
+            "RelatedObjects": {
+              "List": [],
+              "EmptyListItem": {
+                "backObjectId": "",
+                "ers": "",
+                "originalBackObjectId": "",
+                "originalErsnObj": "",
+                "originalReturnObjectId": "",
+                "return": "",
+                "originalReturnObjectd": ""
+              }
+            }
+          }
+        ]
+      },
+      "ObjectsToSearchList": {
+        "List": [
+          "DD506882333PT"
+        ]
+      }
+    },
+    "rolesInfo": ","
+  }
+}

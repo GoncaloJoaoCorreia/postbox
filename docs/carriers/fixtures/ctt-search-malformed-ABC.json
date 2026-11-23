@@ -1,0 +1,109 @@
+{
+  "http": 200,
+  "response": {
+    "versionInfo": {
+      "hasModuleVersionChanged": false,
+      "hasApiVersionChanged": false
+    },
+    "data": {
+      "Result": {
+        "isIpLocked": false,
+        "IsObjectsLengthBiggerThan25": false,
+        "Result": {
+          "Success": true,
+          "ErrorMessage": ""
+        }
+      },
+      "ObjectLastEvents": {
+        "List": [
+          {
+            "ObjectCode": "ABC",
+            "ObjectImageURL": "",
+            "ObjectSenderImageURL": "",
+            "ObjectSenderImageUrlSmall": "",
+            "RelabelObjectCode": "",
+            "ObjectName": "ABC",
+            "IsTracked": false,
+            "Found": false,
+            "CustomsPurposes": false,
+            "Sender": "",
+            "SenderCountryCode": "",
+            "Recipient": "",
+            "RecipientCountryCode": "",
+            "RecipientAddress": "[redacted]",
+            "RecipientPostalCodeAndTown": "[redacted]",
+            "RecipientTimeSlot": "",
+            "UserEmailMatch": false,
+            "UserSenderMatch": false,
+            "UserRecipientMatch": false,
+            "UserPhoneMatches": false,
+            "IsLocker": false,
+            "LockerName": "[redacted]",
+            "CreationDate": "1900-01-01T00:00:00",
+            "ClearanceDate": "1900-01-01T00:00:00",
+            "DeliveryTimeSlot": "",
+            "DeliveryDeadlineEnd": "1900-01-01T00:00:00",
+            "DeliveryDeadlineDayAndMonthForStories": "",
+            "CTTObject": true,
+            "Carrier": "0",
+            "CarrierID": 0,
+            "CarrierLogoURL": "",
+            "ContractNumber": "[redacted]",
+            "ClientNumber": "[redacted]",
+            "FollowObject_Status": 0,
+            "ClientContractCompanyName": "",
+            "SenderLogo": "0",
+            "IsOpenStory": false,
+            "ShipmentProduct": "",
+            "ClientReference": "",
+            "IsB2C": false,
+            "ObjectNexus": "FALSE",
+            "LastEvent": {
+              "DateTime": "1900-01-01T00:00:00",
+              "DateMonthText": "",
+              "State": "",
+              "StateId": 0,
+              "Event": "",
+              "EventCode": "",
+              "EventColorType": 0,
+              "Local": "",
+              "Situation": "",
+              "Reason": "",
+              "Progress": 0,
+              "PointCode": "",
+              "ReceptorName": "[redacted]",
+              "LockerName": "[redacted]",
+              "WithdrawalDate": "1900-01-01",
+              "WithdrawalDateMonthText": "",
+              "TypeOfTimelineEvent": "0",
+              "Nexus": "FALSE",
+              "DestinationNodeName": ""
+            },
+            "JoinedDeliveries": {
+              "JoinedDeliveryId": "",
+              "IsPrincipalCode": false
+            },
+            "RelatedObjects": {
+              "List": [],
+              "EmptyListItem": {
+                "backObjectId": "",
+                "ers": "",
+                "originalBackObjectId": "",
+                "originalErsnObj": "",
+                "originalReturnObjectId": "",
+                "return": "",
+                "originalReturnObjectd": ""
+              }
+            }
+          }
+        ]
+      },
+      "ObjectsToSearchList": {
+        "List": [
+          "ABC"
+        ]
+      }
+    },
+    "rolesInfo": ","
+  }
+}
