@@ -1,0 +1,23 @@
+# Driver plan state (never commit)
+.plan/
+
+# Gradle
+.gradle/
+build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+out/
+local.properties
+
+# Runtime data (SQLite database + working dir)
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# OS
+.DS_Store
