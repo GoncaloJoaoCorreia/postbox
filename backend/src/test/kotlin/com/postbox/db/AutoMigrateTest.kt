@@ -27,6 +27,15 @@ class AutoMigrateTest {
                 buildList { while (rs.next()) add(rs.getString(1)) }
             } ?: emptyList()
         }
-        assertEquals(listOf("invitations", "parcel_events", "parcels", "schema_version", "users"), tables)
+        assertEquals(listOf("parcel_events", "parcels", "schema_version", "users"), tables)
+        val userColumns = dbQuery(db) {
+            exec("SELECT name FROM pragma_table_info('users') ORDER BY name") { rs ->
+                buildList { while (rs.next()) add(rs.getString(1)) }
+            } ?: emptyList()
+        }
+        assertEquals(
+            listOf("created_at", "display_name", "email", "id", "is_active", "password_hash", "role"),
+            userColumns,
+        )
     }
 }

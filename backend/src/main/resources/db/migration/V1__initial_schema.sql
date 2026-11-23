@@ -1,18 +1,14 @@
 -- V1: initial schema. All ids are UUID text; all timestamps are ISO-8601 UTC text.
+-- No invitations table: accounts are created by first-run setup and admins, not invite codes.
 
 CREATE TABLE users (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'USER' CHECK (role IN ('USER', 'ADMIN')),
+    is_active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL
-);
-
-CREATE TABLE invitations (
-    id TEXT PRIMARY KEY,
-    token TEXT NOT NULL UNIQUE,
-    created_by TEXT NULL REFERENCES users(id),
-    expires_at TEXT NOT NULL,
-    used_at TEXT NULL
 );
 
 CREATE TABLE parcels (

@@ -14,7 +14,7 @@ class ParcelRepositoryTest {
         val db = freshTestDatabase("parcel-crud")
         val users = UserRepository(db)
         val parcels = ParcelRepository(db)
-        val user = users.create("alice@example.com", "hash-123")
+        val user = users.create("alice@example.com", "hash-123", displayName = "Alice")
 
         val created = parcels.createParcel(
             userId = user.id,
@@ -70,8 +70,8 @@ class ParcelRepositoryTest {
         val db = freshTestDatabase("parcel-scoping")
         val users = UserRepository(db)
         val parcels = ParcelRepository(db)
-        val alice = users.create("alice@example.com", "hash-a")
-        val bob = users.create("bob@example.com", "hash-b")
+        val alice = users.create("alice@example.com", "hash-a", displayName = "Alice")
+        val bob = users.create("bob@example.com", "hash-b", displayName = "Bob")
         val parcel = parcels.createParcel(alice.id, "TRACK-A", "A parcel", "IN_TRANSIT")
         parcels.addEventForUser(alice.id, parcel.id, "2026-11-20T10:00:00.000Z", "IN_TRANSIT", "scan", null, "raw-a")
 
@@ -95,7 +95,7 @@ class ParcelRepositoryTest {
         val db = freshTestDatabase("parcel-event-idempotent")
         val users = UserRepository(db)
         val parcels = ParcelRepository(db)
-        val user = users.create("alice@example.com", "hash-123")
+        val user = users.create("alice@example.com", "hash-123", displayName = "Alice")
         val parcel = parcels.createParcel(user.id, "TRACK-A", "A parcel", "IN_TRANSIT")
 
         val first = parcels.addEventForUser(user.id, parcel.id, "2026-11-20T10:00:00.000Z", "IN_TRANSIT", "scan", null, "raw-1")

@@ -11,17 +11,10 @@ object Users : Table("users") {
     val id = text("id")
     val email = text("email").uniqueIndex()
     val passwordHash = text("password_hash")
+    val displayName = text("display_name")
+    val role = text("role").default("USER")
+    val isActive = bool("is_active").default(true)
     val createdAt = text("created_at")
-
-    override val primaryKey = PrimaryKey(id)
-}
-
-object Invitations : Table("invitations") {
-    val id = text("id")
-    val token = text("token").uniqueIndex()
-    val createdBy = optReference("created_by", Users.id)
-    val expiresAt = text("expires_at")
-    val usedAt = text("used_at").nullable()
 
     override val primaryKey = PrimaryKey(id)
 }

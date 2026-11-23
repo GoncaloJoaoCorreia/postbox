@@ -32,6 +32,11 @@ Kotlin/Ktor monorepo scaffold. The only Gradle module is `:backend` (the server)
 
 - All versions are pinned in the version catalog `gradle/libs.versions.toml`; add libraries/plugins there with `version.ref` instead of inline versions in `build.gradle.kts`.
 
+## Git conventions
+
+- Branch names: `<type>/<linear-issue>`, e.g. `feat/G-75` or `fix/G-12` — optionally with a short slug appended (`feat/G-50-sqlite-data-model`). Types: `feat`, `fix`, `docs`, `research`, `chore`. One branch per Linear issue.
+- Commit messages follow Conventional Commits: `<type>(<scope>): <short summary>` (e.g. `feat(backend): scaffold Kotlin/Ktor backend`), one logical change per commit. Reference the Linear issue in the commit body (e.g. `Refs G-75`).
+
 ## Housekeeping
 
 - `.gitignore` already covers `.plan/`, `.gradle/`, `build/`, `data/`, `*.db*` — never commit build outputs or the SQLite data dir.
