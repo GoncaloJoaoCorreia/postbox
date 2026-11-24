@@ -24,13 +24,25 @@ interface CarrierAdapter {
 
 /**
  * Maps [CarrierId] to its [CarrierAdapter]; iteration order is the backing
- * map's insertion order, so probing is deterministic.
+ * map's insertion order, so probing is deterministic. The backing map is
+ * copied at construction, so mutating the source map afterwards cannot
+ * change the registry or break its key/adapter invariant.
  */
-class CarrierRegistry(private val adapters: Map<CarrierId, CarrierAdapter>) {
+class CarrierRegistry(adapters: Map<CarrierId, CarrierAdapter>) {
+
+    private val byCarrier: Map<CarrierId, CarrierAdapter> = adapters.toMap()
+
+    init {
+        byCarrier.forEach { (id, adapter) ->
+            require(adapter.carrier == id) {
+                "CarrierRegistry entry for '${id.id}' holds an adapter for '${adapter.carrier.id}'"
+            }
+        }
+    }
 
     /** The registered adapter for [carrier], or null when unregistered. */
-    fun lookup(carrier: CarrierId): CarrierAdapter? = adapters[carrier]
+    fun lookup(carrier: CarrierId): CarrierAdapter? = byCarrier[carrier]
 
     /** All registered adapters, in backing-map insertion order. */
-    val all: List<CarrierAdapter> = adapters.values.toList()
+    val all: List<CarrierAdapter> = byCarrier.values.toList()
 }

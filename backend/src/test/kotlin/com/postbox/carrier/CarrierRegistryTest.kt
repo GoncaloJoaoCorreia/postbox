@@ -2,8 +2,10 @@ package com.postbox.carrier
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class CarrierRegistryTest {
 
@@ -39,5 +41,15 @@ class CarrierRegistryTest {
             )
         )
         assertEquals(listOf(dhl, ctt, postnl), withThird.all)
+    }
+
+    @Test
+    fun `construction rejects an entry whose adapter belongs to a different carrier`() {
+        val dhl = StubAdapter(CarrierId.DHL)
+
+        val error = assertFailsWith<IllegalArgumentException> {
+            CarrierRegistry(mapOf(CarrierId.CTT to dhl))
+        }
+        assertTrue(error.message!!.contains("ctt"), "message should name the mismatched entry: ${error.message}")
     }
 }
