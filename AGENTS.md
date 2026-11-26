@@ -1,6 +1,7 @@
 # AGENTS.md — postbox
 
-Kotlin/Ktor monorepo scaffold. The only Gradle module is `:backend` (the server). `frontend/` and `docker/` are placeholders (README only) reserved for later issues.
+Kotlin/Ktor monorepo. The only Gradle module is `:backend` (the server); `frontend/`
+is the Vite + React SPA; `docker/` is a placeholder (README only) reserved for a later issue.
 
 ## Conventions
 
@@ -107,6 +108,7 @@ Kotlin/Ktor monorepo scaffold. The only Gradle module is `:backend` (the server)
 - `./gradlew :backend:test` — backend tests only
 - `./gradlew :backend:test --tests "com.postbox.HealthzTest"` — run a single test class
 - `./gradlew run` — start the server (blocking, foreground); then `curl http://localhost:8080/healthz` → `{"status":"ok"}`
+- Frontend (from `frontend/`): `npm install`, then `npm run dev` (Vite dev server proxying `/api` to the backend on :8080), `npm run build` (`tsc -b && vite build` → `dist/`), `npm run lint` / `npm run format` / `npm test` (Vitest + MSW), `npm run gen:api` (regenerate `src/api/schema.d.ts` from `../docs/openapi.yaml`)
 - Always use the committed wrapper (`./gradlew`); no system Gradle needed. First build requires network (wrapper bootstrap, Maven Central, Plugin Portal) and auto-provisions a JDK 17 toolchain (`jvmToolchain(17)`).
 
 ## Wiring
@@ -114,6 +116,7 @@ Kotlin/Ktor monorepo scaffold. The only Gradle module is `:backend` (the server)
 - Package `com.postbox`; entrypoint `backend/src/main/kotlin/com/postbox/Application.kt` (mainClass `com.postbox.ApplicationKt`). The root `run` task in `build.gradle.kts` just delegates to `:backend:run`.
 - Routes are registered in `Application.module(config, db)`: `GET /healthz` → `{"status":"ok"}` (unauthenticated) plus the `/api/v1` group — public `GET setup/status`, `POST setup`, `POST auth/login`; every other `/api/v1` route sits behind the `auth-jwt` bearer provider (HS256 JWT, Argon2id password hashes). All error responses use the `{"error":{"code","message"}}` envelope via `respondError` / `ApiException` + StatusPages (including the framework 401 challenge).
 - The OpenAPI 3 contract lives at `docs/openapi.yaml`, is copied onto the classpath as `static/openapi.yaml` by `:backend:processResources`, and is served unauthenticated at `GET /docs/openapi.yaml` (`staticResources("/docs", "static")`).
+- The SPA production build (`frontend/dist` from `npm run build`) is copied onto the classpath as `web/` by the same `:backend:processResources` task and served at `/` via `staticResources("/", "web")` with SPA history-mode fallback (`default("index.html")`); `/api`, `/docs` and `/healthz` are excluded from the fallback so they keep their JSON responses and 404s. Dev mode instead runs `npm run dev` in `frontend/`, where Vite proxies `/api` to the backend.
 - DI is Ktor's built-in plugin (`ktor-server-di`, version-locked via the catalog): `Application.module` installs `DI` and all providers live in the `dependencies { }` block in `backend/src/main/kotlin/com/postbox/AppDi.kt` (`AppConfig`, `Database`, `UserRepository`, `ParcelRepository`, `PasswordHasher`, `JwtService`, `DetectionService`, `RefreshService`, `CarrierHttpClients`, `Map<CarrierId, CarrierRateLimiter>`, `CarrierRegistry`). `DetectionService` is wired to `RuleBasedDetectionService` (format rules + parallel probe over the `CarrierRegistry`, paced by the per-carrier limiters); the refresh service defaults to a not-implemented stub that throws `ServiceNotImplemented`, which the API layer maps to `501 not_implemented`. Resolve in app code with `val x: T by dependencies` or `dependencies.resolve<T>()`; there are no `Application.attributes` carrier keys anymore. `CarrierHttpClients` is closed automatically on server stop (DI closes `AutoCloseable` instances). A per-carrier `CarrierAdapter` registers as `provide<CarrierAdapter>(name = carrier.id)` and the `CarrierRegistry` provider collects those named bindings; in tests, provide overrides (e.g. a `FakeCarrier`) before `module(...)` inside `testApplication` — the test engine keeps the first binding for a key.
 - Logging is structured JSON on the console: Logback + LogstashEncoder, config at `backend/src/main/resources/logback.xml`.
 

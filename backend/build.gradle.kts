@@ -50,4 +50,7 @@ tasks.processResources {
     from(rootProject.file("docs/openapi.yaml")) {
         into("static")
     }
+    from(rootProject.file("frontend/dist")) {
+        into("web")
+    }
 }

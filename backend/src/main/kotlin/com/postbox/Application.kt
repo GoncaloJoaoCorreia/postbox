@@ -101,6 +101,13 @@ fun Application.module(config: AppConfig, db: Database) {
                 parcelRoutes(parcels, detectionService, refreshService)
             }
         }
+        staticResources("/", "web") {
+            filter { call ->
+                val path = call.request.path()
+                path.startsWith("/api") || path.startsWith("/docs") || path == "/healthz"
+            }
+            default("index.html")
+        }
     }
 }
 
