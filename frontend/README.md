@@ -19,9 +19,9 @@ from the start.
 - `src/auth/` — `AuthContext.tsx` (token state, `login`/`logout`; registers `logout` as the
   `onUnauthorized` listener so any `401` drops the token and returns to `/login`)
 - `src/features/` — screens per route area: `auth/` (login, register, first-run setup) and
-  `parcels/` (list screen grouped by status with search, the add-parcel flow with carrier
-  detection progress and manual override, edit/delete on existing parcels, and the inline
-  carrier-metadata prompt)
+  `parcels/` (list screen with app shell, summary cards, search and status filters; the
+  add-parcel panel with carrier detection progress and manual override; edit/delete on
+  existing parcels; the inline carrier-metadata prompt)
 
 ## Commands
 

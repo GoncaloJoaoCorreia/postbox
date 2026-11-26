@@ -22,13 +22,13 @@ describe("app routing", () => {
   it("redirects unauthenticated users from /parcels to the login screen", async () => {
     renderApp(["/parcels"]);
     expect(await screen.findByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Parcels" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /your parcels/i })).not.toBeInTheDocument();
   });
 
   it("shows the parcel list area when a token is stored", async () => {
     storeToken("jwt");
     renderApp(["/parcels"]);
-    expect(await screen.findByRole("heading", { name: "Parcels" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /your parcels/i })).toBeInTheDocument();
   });
 
   it("round-trips a login error from the API error envelope", async () => {
@@ -67,7 +67,7 @@ describe("app routing", () => {
     await user.type(screen.getByLabelText(/email/i), "a@b.c");
     await user.type(screen.getByLabelText(/password/i), "correct-password");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
-    expect(await screen.findByRole("heading", { name: "Parcels" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /your parcels/i })).toBeInTheDocument();
     expect(getStoredToken()).toBe("jwt-abc");
   });
 });
