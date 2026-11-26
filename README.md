@@ -24,6 +24,21 @@ PORT=18080 ./gradlew run
 curl http://localhost:18080/healthz  # -> {"status":"ok"}
 ```
 
+## API v1
+
+Routes live under `/api/v1`. Except `GET /api/v1/setup/status`, `POST /api/v1/setup` and
+`POST /api/v1/auth/login`, every route requires an `Authorization: Bearer <token>` header —
+a HS256 JWT signed with `JWT_SECRET` (no cookies, no server-side sessions). Passwords are
+hashed with Argon2id.
+
+- `GET /api/v1/setup/status` → `{"setupPending": true|false}` — true while the database has no users
+- `POST /api/v1/setup` with `{"email", "password"}` → creates the first ADMIN account; `409` once any account exists
+- `POST /api/v1/auth/login` with `{"email", "password"}` → `{"token": "..."}`; `401 {"error":"invalid-credentials"}` for unknown email, wrong password and deactivated accounts alike
+- `PATCH /api/v1/me` with `{"newPassword"}` → changes the caller's own password
+- `POST /api/v1/admin/users` with `{"email", "password", "displayName"?, "role"?}` → admin-only account creation (`403` for non-admin tokens)
+- `POST /api/v1/admin/users/{id}/deactivate` and `.../reactivate` → admin-only activation toggle
+- `POST /api/v1/admin/users/{id}/reset-password` with `{"newPassword"}` → admin-only password reset
+
 ## Build & test
 
 ```sh

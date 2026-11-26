@@ -1,23 +1,35 @@
 package com.postbox
 
+import com.postbox.api.adminRoutes
+import com.postbox.api.authRoutes
+import com.postbox.api.meRoutes
+import com.postbox.api.setupRoutes
+import com.postbox.auth.AuthJwt
+import com.postbox.auth.JwtService
+import com.postbox.auth.PasswordHasher
+import com.postbox.auth.configureAuth
 import com.postbox.carrier.CarrierClientSettings
 import com.postbox.carrier.CarrierHttpClients
 import com.postbox.carrier.CarrierId
 import com.postbox.carrier.CarrierRateLimiter
 import com.postbox.carrier.CarrierRegistry
 import com.postbox.db.Migrations
+import com.postbox.db.UserRepository
 import com.postbox.db.closeDatabase
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.install
+import io.ktor.server.auth.authenticate
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
+import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.util.AttributeKey
+import org.jetbrains.exposed.v1.jdbc.Database
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import java.net.BindException
@@ -50,10 +62,14 @@ internal fun CarrierSettings.toClientSettings() = CarrierClientSettings(
 internal fun CarrierSettings.toRateLimiter() =
     CarrierRateLimiter(minInterval = minRequestIntervalMs.milliseconds)
 
-fun Application.module(config: AppConfig) {
+fun Application.module(config: AppConfig, db: Database) {
     install(ContentNegotiation) {
         json()
     }
+    val users = UserRepository(db)
+    val hasher = PasswordHasher()
+    val jwtService = JwtService(config.jwtSecret)
+    configureAuth(db, users, jwtService)
     // Per-carrier HTTP clients and rate limiters are built from the parsed
     // postbox.carriers.<id> config, not from hardcoded values (DHL defaults to
     // one call per 5 s via minRequestIntervalMs).
@@ -78,6 +94,14 @@ fun Application.module(config: AppConfig) {
         get("/healthz") {
             call.respond(HealthStatus(status = "ok"))
         }
+        route("/api/v1") {
+            setupRoutes(users, hasher)
+            authRoutes(users, hasher, jwtService)
+            authenticate(AuthJwt) {
+                meRoutes(users, hasher)
+                adminRoutes(users, hasher)
+            }
+        }
     }
 }
 
@@ -92,7 +116,7 @@ fun main() {
     )
     try {
         embeddedServer(Netty, host = config.host, port = config.port) {
-            module(config)
+            module(config, db)
         }.start(wait = true)
     } catch (e: BindException) {
         log.error("Port {} is already in use — set PORT to a free port and retry", config.port)
