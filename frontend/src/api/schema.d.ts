@@ -418,6 +418,12 @@ export interface components {
              *     was never checked.
              */
             lastCheckError?: string | null;
+            /**
+             * Format: date-time
+             * @description ETA as provided by the carrier on the last successful refresh; null when the
+             *     carrier does not provide one or the parcel was never successfully checked.
+             */
+            estimatedDeliveryAt?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */

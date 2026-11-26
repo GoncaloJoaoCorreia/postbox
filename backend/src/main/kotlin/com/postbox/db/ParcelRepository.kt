@@ -24,6 +24,7 @@ data class ParcelRecord(
     val carrierMetadata: String?,
     val lastCheckedAt: String?,
     val lastCheckError: String?,
+    val estimatedDeliveryAt: String?,
     val createdAt: String,
     val archivedAt: String?,
 )
@@ -58,6 +59,7 @@ class ParcelRepository(private val db: Database) {
         detectionMethod: String? = null,
         carrierMetadata: String? = null,
         lastCheckedAt: String? = null,
+        estimatedDeliveryAt: String? = null,
     ): ParcelRecord = dbQuery(db) {
         val id = UUID.randomUUID().toString()
         val createdAt = nowIso()
@@ -71,6 +73,7 @@ class ParcelRepository(private val db: Database) {
             it[Parcels.status] = status
             it[Parcels.carrierMetadata] = carrierMetadata
             it[Parcels.lastCheckedAt] = lastCheckedAt
+            it[Parcels.estimatedDeliveryAt] = estimatedDeliveryAt
             it[Parcels.createdAt] = createdAt
         }
         ParcelRecord(
@@ -84,6 +87,7 @@ class ParcelRepository(private val db: Database) {
             carrierMetadata = carrierMetadata,
             lastCheckedAt = lastCheckedAt,
             lastCheckError = null,
+            estimatedDeliveryAt = estimatedDeliveryAt,
             createdAt = createdAt,
             archivedAt = null,
         )
@@ -112,6 +116,7 @@ class ParcelRepository(private val db: Database) {
         lastCheckedAt: String?,
         archivedAt: String?,
         lastCheckError: String?,
+        estimatedDeliveryAt: String?,
     ): Int = dbQuery(db) {
         Parcels.update({ (Parcels.id eq parcelId) and (Parcels.userId eq userId) }) {
             it[Parcels.displayName] = displayName
@@ -122,6 +127,7 @@ class ParcelRepository(private val db: Database) {
             it[Parcels.lastCheckedAt] = lastCheckedAt
             it[Parcels.archivedAt] = archivedAt
             it[Parcels.lastCheckError] = lastCheckError
+            it[Parcels.estimatedDeliveryAt] = estimatedDeliveryAt
         }
     }
 
@@ -214,6 +220,7 @@ class ParcelRepository(private val db: Database) {
         carrierMetadata = row[Parcels.carrierMetadata],
         lastCheckedAt = row[Parcels.lastCheckedAt],
         lastCheckError = row[Parcels.lastCheckError],
+        estimatedDeliveryAt = row[Parcels.estimatedDeliveryAt],
         createdAt = row[Parcels.createdAt],
         archivedAt = row[Parcels.archivedAt],
     )

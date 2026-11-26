@@ -149,7 +149,13 @@ class DefaultRefreshService(
                 }
             }
         }
-        return persist(parcel, status = result.status.name, lastCheckedAt = isoUtc(clock.now()), lastCheckError = null)
+        return persist(
+            parcel,
+            status = result.status.name,
+            lastCheckedAt = isoUtc(clock.now()),
+            lastCheckError = null,
+            estimatedDeliveryAt = result.eta?.let(::isoUtc),
+        )
     }
 
     private suspend fun probe(carrier: CarrierId, adapter: CarrierAdapter, parcel: ParcelRecord): TrackingResult? {
@@ -179,6 +185,7 @@ class DefaultRefreshService(
             status = parcel.status,
             lastCheckedAt = isoUtc(clock.now()),
             lastCheckError = "carrier unreachable, $dataFrom",
+            estimatedDeliveryAt = parcel.estimatedDeliveryAt,
         )
     }
 
@@ -187,6 +194,7 @@ class DefaultRefreshService(
         status: String,
         lastCheckedAt: String?,
         lastCheckError: String?,
+        estimatedDeliveryAt: String?,
     ): ParcelRecord {
         return dbMutex.withLock {
             withContext(Dispatchers.IO) {
@@ -201,6 +209,7 @@ class DefaultRefreshService(
                     lastCheckedAt = lastCheckedAt,
                     archivedAt = parcel.archivedAt,
                     lastCheckError = lastCheckError,
+                    estimatedDeliveryAt = estimatedDeliveryAt,
                 )
                 parcels.findParcelForUser(parcel.userId, parcel.id)!!
             }

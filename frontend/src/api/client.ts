@@ -11,6 +11,7 @@ export type DetectRequest = components["schemas"]["DetectRequest"];
 export type DetectResponse = components["schemas"]["DetectResponse"];
 export type Carrier = components["schemas"]["Carrier"];
 export type TrackingStatus = components["schemas"]["TrackingStatus"];
+export type DetectionMethod = components["schemas"]["DetectionMethod"];
 export type Metadata = components["schemas"]["Metadata"];
 export type MetadataField = components["schemas"]["MetadataField"];
 export type ErrorResponse = components["schemas"]["ErrorResponse"];

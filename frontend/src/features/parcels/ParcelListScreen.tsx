@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "../../auth/AuthContext";
-import { useMe } from "../../auth/useMe";
+import { UserMenu } from "../../app/UserMenu";
 import { AddParcelScreen } from "./AddParcelScreen";
 import { ParcelRow } from "./ParcelRow";
 import { AlertIcon, ArchiveIcon, BoxIcon, CheckIcon, TruckIcon } from "./icons";
@@ -8,19 +7,14 @@ import { filterParcels, parcelCounts, type ParcelView } from "./parcelView";
 import { useParcels } from "./useParcels";
 
 export function ParcelListScreen() {
-  const { logout } = useAuth();
-  const me = useMe();
   const parcelsQuery = useParcels();
   const [search, setSearch] = useState("");
   const [view, setView] = useState<ParcelView>("all");
   const [adding, setAdding] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const parcels = parcelsQuery.data ?? [];
   const visible = filterParcels(parcels, view, search);
   const counts = parcelCounts(parcels);
-  const displayName = me.data?.displayName ?? "Account";
-  const initial = displayName.trim().charAt(0).toUpperCase() || "?";
 
   return (
     <div className="app-shell">
@@ -33,27 +27,7 @@ export function ParcelListScreen() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <div className="user-menu">
-          <button
-            type="button"
-            className="user-button"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            <span className="avatar" aria-hidden="true">
-              {initial}
-            </span>
-            {displayName}
-          </button>
-          {menuOpen && (
-            <div className="menu" role="menu">
-              <button type="button" role="menuitem" onClick={logout}>
-                Sign out
-              </button>
-            </div>
-          )}
-        </div>
+        <UserMenu />
       </header>
       <div className="app-body">
         <aside className="app-sidebar">
