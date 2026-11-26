@@ -5,7 +5,7 @@ Monorepo scaffold: a Kotlin/Ktor backend with room for a frontend and Docker pac
 ## Layout
 
 - `backend/` — Kotlin 2.x / Ktor 3.x (Netty) server, Gradle module `:backend`
-- `frontend/` — placeholder for the SPA (scaffolded in a later issue)
+- `frontend/` — Vite + React + TypeScript SPA (see `frontend/README.md`)
 - `docker/` — placeholder for Dockerfile / docker-compose (later issue)
 
 ## Run the server
@@ -23,6 +23,19 @@ variable overrides: `PORT` (default `8080`), `JWT_SECRET`, `SQLITE_PATH` (defaul
 PORT=18080 ./gradlew run
 curl http://localhost:18080/healthz  # -> {"status":"ok"}
 ```
+
+## Frontend
+
+```sh
+cd frontend && npm install
+npm run dev     # Vite dev server, proxies /api to the backend on http://localhost:8080
+npm run build   # tsc -b && vite build -> frontend/dist
+```
+
+In production there is no separate web container: `:backend:processResources` copies
+`frontend/dist` onto the classpath as `web/` and the backend serves it at `/` with SPA
+history-mode fallback to `index.html`, so `npm run build` followed by `./gradlew run`
+serves the SPA from Ktor itself.
 
 ## API v1
 
