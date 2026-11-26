@@ -7,11 +7,15 @@ import com.postbox.carrier.CarrierId
 import com.postbox.carrier.CarrierRegistry
 import com.postbox.carrier.FakeCarrier
 import com.postbox.carrier.MetadataField
+import com.postbox.carrier.TrackingEvent
 import com.postbox.carrier.TrackingResult
+import com.postbox.carrier.TrackingStatus
 import com.postbox.db.ParcelRepository
 import com.postbox.db.UserRepository
 import com.postbox.db.closeDatabase
 import com.postbox.db.freshTestDatabase
+import com.postbox.db.isoUtc
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -135,11 +139,54 @@ class RefreshServiceTest {
                 lastCheckedAt = null,
                 archivedAt = null,
                 lastCheckError = null,
+                estimatedDeliveryAt = null,
             )
             val refreshed = service.refresh(user.id, parcel.id)
             assertEquals(FakeCarrier.deterministicResult(number).status.name, refreshed.status)
             assertNotNull(refreshed.lastCheckedAt)
             assertNull(refreshed.lastCheckError)
+        } finally {
+            closeDatabase(db)
+        }
+    }
+
+    @Test
+    fun `a successful refresh persists the carrier-provided ETA and a later carrier answer without one clears it`() = runTest {
+        val db = freshTestDatabase("refresh-eta")
+        try {
+            val users = UserRepository(db)
+            val parcels = ParcelRepository(db)
+            val user = users.create("alice@example.com", "hash-1", displayName = "Alice")
+            val number = "1234567890"
+            val withEta = FakeCarrier.deterministicResult(number)
+            val withoutEta = TrackingResult(
+                status = TrackingStatus.IN_TRANSIT,
+                eta = null,
+                carrierService = null,
+                events = listOf(
+                    TrackingEvent(Instant.parse("2026-01-01T00:00:00Z"), TrackingStatus.IN_TRANSIT, "In transit", null),
+                ),
+            )
+            fun serviceWith(result: TrackingResult) = DefaultRefreshService(
+                parcels = parcels,
+                registry = CarrierRegistry(
+                    mapOf(CarrierId.DHL to FakeCarrier(CarrierId.DHL, results = mapOf(number to result))),
+                ),
+                rateLimiters = emptyMap(),
+                settings = RefreshSettings(
+                    staleAfter = 30.minutes,
+                    maxConcurrentProbes = 4,
+                    deliveredGrace = 3.days,
+                ),
+                probeTimeouts = mapOf(CarrierId.DHL to 10.seconds),
+            )
+            val parcel = parcels.createParcel(user.id, number, "P", "UNKNOWN", carrier = "dhl")
+
+            val refreshed = serviceWith(withEta).refresh(user.id, parcel.id)
+            assertEquals(isoUtc(withEta.eta!!), refreshed.estimatedDeliveryAt)
+
+            val cleared = serviceWith(withoutEta).refresh(user.id, parcel.id)
+            assertNull(cleared.estimatedDeliveryAt, "a carrier that stops providing an ETA clears the stored one")
         } finally {
             closeDatabase(db)
         }

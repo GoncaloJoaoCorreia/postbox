@@ -733,6 +733,13 @@ components:
             Soft refresh-failure indicator, e.g. `carrier unreachable, data from
             2026-11-26T15:00:00.000Z`. Null when the last check succeeded or the parcel
             was never checked.
+        estimatedDeliveryAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            ETA as provided by the carrier on the last successful refresh; null when the
+            carrier does not provide one or the parcel was never successfully checked.
         createdAt:
           type: string
           format: date-time

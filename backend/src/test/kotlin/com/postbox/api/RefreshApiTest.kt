@@ -219,6 +219,7 @@ class RefreshApiTest {
             val body = bodyJson(forced)
             assertEquals(expected.status.name, body.getValue("status").jsonPrimitive.content)
             assertNotNull(body["lastCheckedAt"])
+            assertEquals(isoUtc(expected.eta!!), body.getValue("estimatedDeliveryAt").jsonPrimitive.content)
             assertEquals(listOf(dhlNumber, dhlNumber), dhl.calls, "the forced refresh must probe even though the parcel is fresh")
 
             val events = bodyJsonArray(getJson("/api/v1/parcels/$id/events", token))
@@ -394,6 +395,7 @@ class RefreshApiTest {
             lastCheckedAt = isoUtc(lastCheckedAt),
             archivedAt = null,
             lastCheckError = null,
+            estimatedDeliveryAt = null,
         )
     }
 }

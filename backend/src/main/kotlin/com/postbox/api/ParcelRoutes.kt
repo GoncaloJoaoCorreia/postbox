@@ -159,6 +159,7 @@ fun Route.parcelRoutes(
                         lastCheckedAt = parcel.lastCheckedAt,
                         archivedAt = archivedAt,
                         lastCheckError = parcel.lastCheckError,
+                        estimatedDeliveryAt = parcel.estimatedDeliveryAt,
                     )
                 }
                 val reloaded = withContext(Dispatchers.IO) { parcels.findParcelForUser(userId, parcel.id) }!!
