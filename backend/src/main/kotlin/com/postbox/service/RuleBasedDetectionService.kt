@@ -58,6 +58,6 @@ class RuleBasedDetectionService(
             }
         }
         jobs.joinAll()
-        if (hit.isCompleted) hit.getCompleted() else null
+        if (hit.isCompleted) hit.await() else null
     }
 }

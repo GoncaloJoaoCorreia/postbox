@@ -28,7 +28,7 @@ class TrackingNumberRulesTest {
     }
 
     @Test
-    fun `S10 format is not enough: wrong check digit or non-PT suffix drops the ctt candidate`() {
+    fun `S10 format alone is not enough - wrong check digit or non-PT suffix drops the ctt candidate`() {
         assertEquals(listOf(CarrierId.PAACK), TrackingNumberRules.candidatesFor("RR000000000PT"))
         assertEquals(listOf(CarrierId.PAACK), TrackingNumberRules.candidatesFor("DD506882333NL"))
     }
