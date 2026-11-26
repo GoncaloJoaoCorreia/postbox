@@ -5,6 +5,7 @@ import com.postbox.carrier.CarrierHttpClients
 import com.postbox.carrier.CarrierId
 import com.postbox.carrier.CarrierRateLimiter
 import com.postbox.carrier.CarrierRegistry
+import com.postbox.carrier.DhlAdapter
 import com.postbox.carrier.FakeCarrier
 import com.postbox.db.closeDatabase
 import com.postbox.db.freshTestDatabase
@@ -20,6 +21,7 @@ import io.ktor.server.plugins.di.resolve
 import io.ktor.server.testing.testApplication
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -27,12 +29,13 @@ import kotlinx.coroutines.test.runTest
 
 class CarrierWiringTest {
 
-    private fun testConfig() = AppConfig(
+    private fun testConfig(dhlApiKey: String? = null) = AppConfig(
         host = "127.0.0.1",
         port = 0, // testApplication runs in-process and does not bind a real port
         jwtSecret = "test-secret",
         sqlitePath = "build/tmp/test/postbox.db",
         dataDir = "build/tmp/test-data",
+        dhlApiKey = dhlApiKey,
         carriers = mapOf(
             CarrierId.DHL to CarrierSettings(
                 connectTimeoutMs = 5000,
@@ -142,6 +145,30 @@ class CarrierWiringTest {
             val registry = application.dependencies.resolve<CarrierRegistry>()
             assertSame(fake, registry.lookup(CarrierId.DHL))
             assertSame(expected, registry.lookup(CarrierId.DHL)?.track(number, emptyMap()))
+        } finally {
+            closeDatabase(db)
+        }
+    }
+
+    @Test
+    fun `DHL adapter registers in the carrier registry when DHL_API_KEY is set`() = testApplication {
+        val db = freshTestDatabase("carrier-wiring-dhl-key")
+        try {
+            application {
+                module(testConfig(dhlApiKey = "test-dhl-key"), db)
+            }
+            startApplication()
+            val httpClients = application.dependencies.resolve<CarrierHttpClients>()
+            try {
+                val registry = application.dependencies.resolve<CarrierRegistry>()
+                val dhl = registry.lookup(CarrierId.DHL)
+                assertIs<DhlAdapter>(dhl)
+                assertEquals(CarrierId.DHL, dhl?.carrier)
+                assertEquals(emptyMap(), dhl?.requiredMetadata)
+                assertEquals(listOf(dhl), registry.all)
+            } finally {
+                httpClients.close()
+            }
         } finally {
             closeDatabase(db)
         }

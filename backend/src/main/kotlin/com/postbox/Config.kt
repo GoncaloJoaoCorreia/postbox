@@ -38,6 +38,7 @@ data class AppConfig(
     val sqlitePath: String,
     val dataDir: String,
     val carriers: Map<CarrierId, CarrierSettings> = emptyMap(),
+    val dhlApiKey: String? = null,
     val refresh: RefreshSettings = RefreshSettings(
         staleAfter = 30.minutes,
         maxConcurrentProbes = 4,
@@ -65,6 +66,7 @@ object ConfigLoader {
             jwtSecret = config.getString("postbox.jwt.secret"),
             sqlitePath = config.getString("postbox.storage.sqlitePath"),
             dataDir = config.getString("postbox.storage.dataDir"),
+            dhlApiKey = if (config.hasPath("postbox.dhl.apiKey")) config.getString("postbox.dhl.apiKey") else null,
             // Driven by the CarrierId enum, not by config keys, so a typo'd carrier
             // key can never create a phantom carrier.
             carriers = CarrierId.entries

@@ -8,6 +8,7 @@ import com.postbox.carrier.CarrierHttpClients
 import com.postbox.carrier.CarrierId
 import com.postbox.carrier.CarrierRateLimiter
 import com.postbox.carrier.CarrierRegistry
+import com.postbox.carrier.DhlAdapter
 import com.postbox.db.ParcelRepository
 import com.postbox.db.UserRepository
 import com.postbox.service.DefaultRefreshService
@@ -20,7 +21,10 @@ import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.plugins.di.provide
 import io.ktor.server.plugins.di.resolve
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.slf4j.LoggerFactory
 import kotlin.time.Duration.Companion.milliseconds
+
+private val log = LoggerFactory.getLogger("com.postbox.AppDi")
 
 internal fun CarrierSettings.toClientSettings() = CarrierClientSettings(
     connectTimeoutMs = connectTimeoutMs,
@@ -67,6 +71,18 @@ fun Application.appDependencies(config: AppConfig, db: Database) {
                 if (contains(adapterKey)) carrier to get<CarrierAdapter>(adapterKey) else null
             }
             CarrierRegistry(adapters.toMap())
+        }
+        val dhlApiKey = config.dhlApiKey
+        if (dhlApiKey != null) {
+            provide<CarrierAdapter>(name = CarrierId.DHL.id) {
+                DhlAdapter(
+                    client = resolve<CarrierHttpClients>()[CarrierId.DHL],
+                    apiKey = dhlApiKey,
+                    rateLimiter = config.carriers.getValue(CarrierId.DHL).toRateLimiter(),
+                )
+            }
+        } else {
+            log.warn("DHL_API_KEY is not set — the DHL carrier adapter is disabled")
         }
     }
 }
