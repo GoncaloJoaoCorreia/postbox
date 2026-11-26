@@ -62,4 +62,8 @@ tasks.processTestResources {
         include("linkdo-*")
         into("fixtures")
     }
+    from(rootProject.file("docs/carriers/paack/fixtures")) {
+        include("*.json")
+        into("fixtures/paack")
+    }
 }

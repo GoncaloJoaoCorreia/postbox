@@ -8,6 +8,7 @@ import com.postbox.carrier.CarrierRegistry
 import com.postbox.carrier.DhlAdapter
 import com.postbox.carrier.EcoScootingAdapter
 import com.postbox.carrier.FakeCarrier
+import com.postbox.carrier.PaackAdapter
 import com.postbox.carrier.PostCttAdapter
 import com.postbox.db.closeDatabase
 import com.postbox.db.freshTestDatabase
@@ -195,6 +196,30 @@ class CarrierWiringTest {
                 assertEquals(CarrierId.CTT, ctt?.carrier)
                 assertEquals(emptyMap(), ctt?.requiredMetadata)
                 assertEquals(listOf(ctt), registry.all)
+            } finally {
+                httpClients.close()
+            }
+        } finally {
+            closeDatabase(db)
+        }
+    }
+
+    @Test
+    fun `Paack adapter registers in the carrier registry when its carrier config block is present`() = testApplication {
+        val db = freshTestDatabase("carrier-wiring-paack")
+        try {
+            application {
+                module(testConfig(carriers = setOf(CarrierId.PAACK)), db)
+            }
+            startApplication()
+            val httpClients = application.dependencies.resolve<CarrierHttpClients>()
+            try {
+                val registry = application.dependencies.resolve<CarrierRegistry>()
+                val paack = registry.lookup(CarrierId.PAACK)
+                assertIs<PaackAdapter>(paack)
+                assertEquals(CarrierId.PAACK, paack?.carrier)
+                assertEquals(listOf("postcode"), paack?.requiredMetadata?.keys?.toList())
+                assertEquals(listOf(paack), registry.all)
             } finally {
                 httpClients.close()
             }
