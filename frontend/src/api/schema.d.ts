@@ -164,6 +164,9 @@ export interface paths {
          *     parcels skip refresh once a grace window (default 3 days) has passed since their
          *     last check. A carrier outage never fails the list: cached data is served and the
          *     parcel carries a soft `lastCheckError` indicator (`carrier unreachable, data from ...`).
+         *     A parcel whose resolved carrier requires metadata it does not have yet is served with
+         *     cached data plus a structured `missingMetadata` field list (the user is prompted for
+         *     exactly those fields) — it never fails the list either.
          */
         get: operations["listParcels"];
         put?: never;
@@ -258,7 +261,11 @@ export interface paths {
          * @description Forces a refresh regardless of the TTL: new events are inserted (deduplicated by
          *     the idempotency index), the status is recalculated and `lastCheckedAt` updated.
          *     If the carrier is unavailable, cached data stays and the parcel is marked with a
-         *     soft `lastCheckError` indicator instead of failing.
+         *     soft `lastCheckError` indicator instead of failing. If the resolved carrier
+         *     requires metadata the parcel does not have, the refresh answers `409` with
+         *     `error.code: missing-carrier-metadata` and the structured `error.fields` list —
+         *     prompt for exactly those fields; adding them via `PATCH metadata` makes the next
+         *     refresh succeed.
          */
         post: operations["refreshParcel"];
         delete?: never;
