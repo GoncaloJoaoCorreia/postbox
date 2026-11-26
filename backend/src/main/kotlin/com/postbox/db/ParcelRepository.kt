@@ -1,6 +1,7 @@
 package com.postbox.db
 
 import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -165,6 +166,19 @@ class ParcelRepository(private val db: Database) {
                     (ParcelEvents.description eq description)
             }
             .first().let(::toEventRecord)
+    }
+
+    /** Newest event of a parcel owned by [userId]; null when the parcel is not owned or has no events. */
+    fun findLatestEventForUser(userId: String, parcelId: String): ParcelEventRecord? = dbQuery(db) {
+        val owned = Parcels.selectAll()
+            .where { (Parcels.id eq parcelId) and (Parcels.userId eq userId) }
+            .any()
+        if (!owned) return@dbQuery null
+        ParcelEvents.selectAll()
+            .where { ParcelEvents.parcelId eq parcelId }
+            .orderBy(ParcelEvents.occurredAt, SortOrder.DESC)
+            .firstOrNull()
+            ?.let(::toEventRecord)
     }
 
     /** Events of a parcel owned by [userId]; empty for another user's parcel. */

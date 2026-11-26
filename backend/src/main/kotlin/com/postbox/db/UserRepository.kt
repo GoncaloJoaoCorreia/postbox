@@ -64,6 +64,10 @@ class UserRepository(private val db: Database) {
 
     fun countAll(): Long = dbQuery(db) { Users.selectAll().count() }
 
+    fun listAll(): List<UserRecord> = dbQuery(db) {
+        Users.selectAll().orderBy(Users.createdAt).map(::toUserRecord)
+    }
+
     fun findById(id: String): UserRecord? = dbQuery(db) {
         Users.selectAll().where { Users.id eq id }.firstOrNull()?.let(::toUserRecord)
     }

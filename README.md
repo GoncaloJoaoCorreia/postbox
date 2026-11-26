@@ -26,18 +26,27 @@ curl http://localhost:18080/healthz  # -> {"status":"ok"}
 
 ## API v1
 
-Routes live under `/api/v1`. Except `GET /api/v1/setup/status`, `POST /api/v1/setup` and
-`POST /api/v1/auth/login`, every route requires an `Authorization: Bearer <token>` header —
-a HS256 JWT signed with `JWT_SECRET` (no cookies, no server-side sessions). Passwords are
-hashed with Argon2id.
+Routes live under `/api/v1`. The OpenAPI 3 contract is checked in at `docs/openapi.yaml` and
+served by a running instance at `GET /docs/openapi.yaml`. Except `GET /api/v1/setup/status`,
+`POST /api/v1/setup` and `POST /api/v1/auth/login`, every route requires an
+`Authorization: Bearer <token>` header — a HS256 JWT signed with `JWT_SECRET` (no cookies, no
+server-side sessions). Passwords are hashed with Argon2id.
+
+Every error response uses one envelope: `{"error": {"code": "...", "message": "..."}}` —
+including `401` for missing/invalid tokens and the temporary `501 not_implemented` on the two
+deferred parcel endpoints.
 
 - `GET /api/v1/setup/status` → `{"setupPending": true|false}` — true while the database has no users
 - `POST /api/v1/setup` with `{"email", "password"}` → creates the first ADMIN account; `409` once any account exists
-- `POST /api/v1/auth/login` with `{"email", "password"}` → `{"token": "..."}`; `401 {"error":"invalid-credentials"}` for unknown email, wrong password and deactivated accounts alike
-- `PATCH /api/v1/me` with `{"newPassword"}` → changes the caller's own password
-- `POST /api/v1/admin/users` with `{"email", "password", "displayName"?, "role"?}` → admin-only account creation (`403` for non-admin tokens)
-- `POST /api/v1/admin/users/{id}/deactivate` and `.../reactivate` → admin-only activation toggle
-- `POST /api/v1/admin/users/{id}/reset-password` with `{"newPassword"}` → admin-only password reset
+- `POST /api/v1/auth/login` with `{"email", "password"}` → `{"token": "..."}`; `401 invalid-credentials` for unknown email, wrong password and deactivated accounts alike
+- `GET /api/v1/me` → the caller's account; `PATCH /api/v1/me` with `{"newPassword"}` → changes the caller's own password (`204`)
+- Admin-only (`403 admin-required` otherwise): `GET /api/v1/admin/users` → all accounts; `POST /api/v1/admin/users` with `{"email", "password", "displayName"?, "role"?}` → creates an account (`201`); `PATCH /api/v1/admin/users/{id}` with `{"isActive"?, "newPassword"?}` → deactivate/reactivate and/or reset the password → the updated account (`404` for unknown ids)
+- `GET /api/v1/parcels` → own parcels, each with its current `status` and `latestEvent`, newest events first (cached data only)
+- `POST /api/v1/parcels` with `{"trackingNumber", "displayName"?, "carrier"?, "metadata"?}` → `201` the created parcel (status `UNKNOWN` until first refresh); the tracking number is trimmed, length-capped and charset-checked
+- `GET /api/v1/parcels/{id}`; `PATCH /api/v1/parcels/{id}` with `{"displayName"?, "archived"?, "carrier"?, "metadata"?}` (rename, archive, change carrier); `DELETE /api/v1/parcels/{id}` → `204`. Other users' parcel ids return `404` (never `403`) so ids cannot be enumerated
+- `GET /api/v1/parcels/{id}/events` → full normalized timeline, newest first
+- `POST /api/v1/parcels/detect` with `{"trackingNumber", "carrier"?, "metadata"?}` → `501 not_implemented` until the detection engine lands
+- `POST /api/v1/parcels/{id}/refresh` → `501 not_implemented` until the refresh service lands
 
 ## Build & test
 

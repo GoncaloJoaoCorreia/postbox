@@ -1,0 +1,711 @@
+openapi: 3.0.3
+info:
+  title: Postbox API
+  version: 1.0.0
+  description: |
+    The stable REST API the Postbox SPA talks to (and the mobile app later).
+    API-first: this contract is versioned under `/api/v1` and must not break casually.
+
+    Authentication is bearer-token based everywhere except first-run setup and login:
+    `Authorization: Bearer <token>` with a HS256 JWT. All error responses share one
+    envelope: `{"error": {"code": "...", "message": "..."}}` — including 401 for
+    missing/invalid tokens and the temporary `501 not_implemented` on the two
+    deferred endpoints (`POST /api/v1/parcels/detect`, `POST /api/v1/parcels/{id}/refresh`).
+
+    Parcel ids of other users return 404 (never 403) so ids cannot be enumerated.
+servers:
+  - url: /
+tags:
+  - name: setup
+    description: First-run admin creation; valid only while no account exists
+  - name: auth
+    description: Login
+  - name: me
+    description: The caller's own account
+  - name: admin
+    description: Account management, ADMIN role only
+  - name: parcels
+    description: Per-user parcel tracking
+  - name: docs
+    description: This contract, served by the running instance
+paths:
+  /healthz:
+    get:
+      tags: [docs]
+      operationId: getHealthz
+      summary: Liveness probe
+      security: []
+      responses:
+        '200':
+          description: Server is up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+  /docs/openapi.yaml:
+    get:
+      tags: [docs]
+      operationId: getOpenApiSpec
+      summary: This OpenAPI contract
+      security: []
+      responses:
+        '200':
+          description: The OpenAPI 3 document
+          content:
+            application/yaml:
+              schema:
+                type: string
+  /api/v1/setup/status:
+    get:
+      tags: [setup]
+      operationId: getSetupStatus
+      summary: Whether first-run setup is still pending
+      security: []
+      responses:
+        '200':
+          description: Setup state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetupStatusResponse'
+  /api/v1/setup:
+    post:
+      tags: [setup]
+      operationId: postSetup
+      summary: Create the first ADMIN account (only while no account exists)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetupRequest'
+      responses:
+        '201':
+          description: The created admin account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      operationId: postLogin
+      summary: Log in and receive a bearer token
+      description: The 401 response is identical for unknown email, wrong password and deactivated accounts
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: The signed JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/me:
+    get:
+      tags: [me]
+      operationId: getMe
+      summary: The caller's own account
+      responses:
+        '200':
+          description: The caller's account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: [me]
+      operationId: patchMe
+      summary: Change the caller's own password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Password changed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/admin/users:
+    get:
+      tags: [admin]
+      operationId: listUsers
+      summary: List all accounts
+      responses:
+        '200':
+          description: All accounts, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [admin]
+      operationId: createUser
+      summary: Create an account with an initial password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: The created account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/v1/admin/users/{id}:
+    patch:
+      tags: [admin]
+      operationId: updateUser
+      summary: Deactivate/reactivate an account and/or reset its password
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: The updated account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/parcels:
+    get:
+      tags: [parcels]
+      operationId: listParcels
+      summary: Own parcels with current status, newest events first
+      description: |
+        Returns all parcels owned by the caller (including archived ones, visible via
+        `archivedAt`), each with its current `status` and `latestEvent`. Parcels with a
+        newer latest event sort first; parcels without events sort last by creation time.
+        Serves cached data only — stale parcels are not refreshed here (that behavior is
+        deferred to the refresh service).
+      responses:
+        '200':
+          description: The caller's parcels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Parcel'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [parcels]
+      operationId: createParcel
+      summary: Add a tracking number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateParcelRequest'
+      responses:
+        '201':
+          description: The created parcel (status `UNKNOWN` until first refresh)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Parcel'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/parcels/detect:
+    post:
+      tags: [parcels]
+      operationId: detectCarrier
+      summary: Resolve which carrier a tracking number belongs to
+      description: |
+        Wired but not implemented yet — responds `501 not_implemented` until the
+        detection engine lands.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectRequest'
+      responses:
+        '200':
+          description: The detection outcome
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /api/v1/parcels/{id}:
+    get:
+      tags: [parcels]
+      operationId: getParcel
+      summary: One own parcel with its current status and latest event
+      parameters:
+        - $ref: '#/components/parameters/ParcelId'
+      responses:
+        '200':
+          description: The parcel
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Parcel'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [parcels]
+      operationId: updateParcel
+      summary: Rename, archive or change the carrier of an own parcel
+      parameters:
+        - $ref: '#/components/parameters/ParcelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateParcelRequest'
+      responses:
+        '200':
+          description: The updated parcel
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Parcel'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [parcels]
+      operationId: deleteParcel
+      summary: Delete an own parcel and its events
+      parameters:
+        - $ref: '#/components/parameters/ParcelId'
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/parcels/{id}/events:
+    get:
+      tags: [parcels]
+      operationId: listParcelEvents
+      summary: Full normalized timeline of an own parcel, newest first
+      parameters:
+        - $ref: '#/components/parameters/ParcelId'
+      responses:
+        '200':
+          description: The events, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParcelEvent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/parcels/{id}/refresh:
+    post:
+      tags: [parcels]
+      operationId: refreshParcel
+      summary: Force a refresh of an own parcel regardless of staleness
+      description: |
+        Wired but not implemented yet — responds `501 not_implemented` until the
+        refresh service lands.
+      parameters:
+        - $ref: '#/components/parameters/ParcelId'
+      responses:
+        '200':
+          description: The refreshed parcel
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Parcel'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ParcelId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    BadRequest:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: invalid-tracking-number
+              message: Tracking number must be 1-64 characters of letters, digits or hyphens
+    Unauthorized:
+      description: Missing or invalid bearer token, or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: unauthorized
+              message: A valid bearer token is required
+    Forbidden:
+      description: Authenticated but not allowed (admin role required)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: admin-required
+              message: An admin account is required
+    NotFound:
+      description: Resource does not exist (or belongs to another user — parcel ids are not enumerable)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: parcel-not-found
+              message: No parcel with this id exists
+    Conflict:
+      description: Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: email-already-used
+              message: An account with this email already exists
+    NotImplemented:
+      description: Route is wired but its service is deferred
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: not_implemented
+              message: Parcel refresh is not implemented yet
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ApiError'
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: not_implemented
+        message:
+          type: string
+          example: Parcel refresh is not implemented yet
+    SetupStatusResponse:
+      type: object
+      required: [setupPending]
+      properties:
+        setupPending:
+          type: boolean
+          description: true while the database has no users
+    SetupRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    LoginResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: HS256 JWT
+    UserRole:
+      type: string
+      enum: [USER, ADMIN]
+    User:
+      type: object
+      required: [id, email, displayName, role, isActive, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    CreateUserRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        displayName:
+          type: string
+          maxLength: 120
+        role:
+          $ref: '#/components/schemas/UserRole'
+          default: USER
+    UpdateUserRequest:
+      type: object
+      description: At least one field must be present
+      properties:
+        isActive:
+          type: boolean
+          description: false deactivates the account, true reactivates it
+        newPassword:
+          type: string
+          minLength: 8
+    ChangePasswordRequest:
+      type: object
+      required: [newPassword]
+      properties:
+        newPassword:
+          type: string
+          minLength: 8
+    Carrier:
+      type: string
+      enum: [dhl, ctt, postnl, dpd, paack, ecoscooting]
+    TrackingStatus:
+      type: string
+      enum: [PENDING, IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED, EXCEPTION, UNKNOWN]
+      description: UNKNOWN means added but not checked against a carrier yet
+    Metadata:
+      type: object
+      additionalProperties:
+        type: string
+      description: Carrier-specific fields (e.g. a postcode), stored per parcel
+    CreateParcelRequest:
+      type: object
+      required: [trackingNumber]
+      properties:
+        trackingNumber:
+          type: string
+          pattern: '^[A-Za-z0-9][A-Za-z0-9-]{0,63}$'
+          description: Trimmed, then length-capped and charset-checked server-side
+        displayName:
+          type: string
+          maxLength: 120
+          description: Defaults to the tracking number
+        carrier:
+          $ref: '#/components/schemas/Carrier'
+          description: Manual carrier override
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    UpdateParcelRequest:
+      type: object
+      description: Fields that are absent keep their current value
+      properties:
+        displayName:
+          type: string
+          maxLength: 120
+        archived:
+          type: boolean
+          description: true archives the parcel, false unarchives it
+        carrier:
+          $ref: '#/components/schemas/Carrier'
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    ParcelEvent:
+      type: object
+      required: [id, occurredAt, status, description]
+      properties:
+        id:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/TrackingStatus'
+        description:
+          type: string
+        location:
+          type: string
+          nullable: true
+    Parcel:
+      type: object
+      required: [id, trackingNumber, displayName, status, createdAt, latestEvent]
+      properties:
+        id:
+          type: string
+          format: uuid
+        trackingNumber:
+          type: string
+        carrier:
+          allOf:
+            - $ref: '#/components/schemas/Carrier'
+          nullable: true
+        displayName:
+          type: string
+        status:
+          $ref: '#/components/schemas/TrackingStatus'
+        metadata:
+          allOf:
+            - $ref: '#/components/schemas/Metadata'
+          nullable: true
+        lastCheckedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+        latestEvent:
+          allOf:
+            - $ref: '#/components/schemas/ParcelEvent'
+          nullable: true
+    DetectRequest:
+      type: object
+      required: [trackingNumber]
+      properties:
+        trackingNumber:
+          type: string
+          pattern: '^[A-Za-z0-9][A-Za-z0-9-]{0,63}$'
+        carrier:
+          $ref: '#/components/schemas/Carrier'
+          description: Manual override — never probed away
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    DetectionMethod:
+      type: string
+      enum: [rule, probe, override]
+    DetectResponse:
+      type: object
+      required: [trackingNumber, method, candidates]
+      properties:
+        trackingNumber:
+          type: string
+        carrier:
+          allOf:
+            - $ref: '#/components/schemas/Carrier'
+          nullable: true
+          description: The resolved (or provisionally kept) carrier
+        method:
+          $ref: '#/components/schemas/DetectionMethod'
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Carrier'
+          description: Remaining candidates, for transparency
+security:
+  - bearerAuth: []

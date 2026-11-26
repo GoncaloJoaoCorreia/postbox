@@ -8,16 +8,26 @@ import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 fun Route.meRoutes(users: UserRepository, hasher: PasswordHasher) {
+    get("/me") {
+        val principal = call.principal<PostboxPrincipal>()!!
+        val user = withContext(Dispatchers.IO) { users.findById(principal.userId) }!!
+        call.respond(user.toResponse())
+    }
     patch("/me") {
         val principal = call.principal<PostboxPrincipal>()!!
         val req = call.receive<ChangePasswordRequest>()
         if (req.newPassword.length < MinPasswordLength) {
-            call.respond(HttpStatusCode.BadRequest, ErrorResponse("password-too-short"))
+            call.respondError(
+                HttpStatusCode.BadRequest,
+                "password-too-short",
+                "The password must be at least $MinPasswordLength characters long",
+            )
             return@patch
         }
         withContext(Dispatchers.IO) {

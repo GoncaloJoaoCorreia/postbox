@@ -17,6 +17,7 @@ dependencies {
     implementation(libs.ktor.server.netty)
     implementation(libs.ktor.server.content.negotiation)
     implementation(libs.ktor.server.auth)
+    implementation(libs.ktor.server.status.pages)
     implementation(libs.ktor.server.di)
     implementation(libs.java.jwt)
     implementation(libs.argon2.jvm)
@@ -42,5 +43,11 @@ tasks.test {
     useJUnitPlatform()
     testLogging {
         events("passed", "skipped", "failed")
+    }
+}
+
+tasks.processResources {
+    from(rootProject.file("docs/openapi.yaml")) {
+        into("static")
     }
 }
