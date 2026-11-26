@@ -1,6 +1,9 @@
 import type { components } from "./schema";
 
 export type User = components["schemas"]["User"];
+export type UserRole = components["schemas"]["UserRole"];
+export type CreateUserRequest = components["schemas"]["CreateUserRequest"];
+export type UpdateUserRequest = components["schemas"]["UpdateUserRequest"];
 export type Parcel = components["schemas"]["Parcel"];
 export type ParcelEvent = components["schemas"]["ParcelEvent"];
 export type LoginResponse = components["schemas"]["LoginResponse"];
@@ -69,6 +72,10 @@ export function createApiClient({ baseUrl, getToken, onUnauthorized }: ApiClient
     login: (email: string, password: string) =>
       request<LoginResponse>("POST", "/api/v1/auth/login", { email, password }),
     getMe: () => request<User>("GET", "/api/v1/me"),
+    listUsers: () => request<User[]>("GET", "/api/v1/admin/users"),
+    createUser: (body: CreateUserRequest) => request<User>("POST", "/api/v1/admin/users", body),
+    updateUser: (id: string, body: UpdateUserRequest) =>
+      request<User>("PATCH", `/api/v1/admin/users/${id}`, body),
     listParcels: () => request<Parcel[]>("GET", "/api/v1/parcels"),
     createParcel: (body: CreateParcelRequest) => request<Parcel>("POST", "/api/v1/parcels", body),
     getParcel: (id: string) => request<Parcel>("GET", `/api/v1/parcels/${id}`),

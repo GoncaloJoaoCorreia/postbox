@@ -1,9 +1,11 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { AdminScreen } from "../features/admin/AdminScreen";
 import { LoginScreen } from "../features/auth/LoginScreen";
 import { RegisterScreen } from "../features/auth/RegisterScreen";
 import { SetupScreen } from "../features/auth/SetupScreen";
 import { ParcelDetailScreen } from "../features/parcels/ParcelDetailScreen";
 import { ParcelListScreen } from "../features/parcels/ParcelListScreen";
+import { RequireAdmin } from "./RequireAdmin";
 import { RequireAuth } from "./RequireAuth";
 import { SetupGate } from "./SetupGate";
 
@@ -17,6 +19,9 @@ export function AppRoutes() {
         <Route element={<RequireAuth />}>
           <Route path="/parcels" element={<ParcelListScreen />} />
           <Route path="/parcels/:id" element={<ParcelDetailScreen />} />
+          <Route element={<RequireAdmin />}>
+            <Route path="/admin" element={<AdminScreen />} />
+          </Route>
         </Route>
         <Route path="*" element={<Navigate to="/parcels" replace />} />
       </Route>

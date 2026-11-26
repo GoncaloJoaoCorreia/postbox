@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TopNav } from "../../app/TopNav";
 import { UserMenu } from "../../app/UserMenu";
 import { AddParcelScreen } from "./AddParcelScreen";
 import { ParcelRow } from "./ParcelRow";
@@ -27,6 +28,7 @@ export function ParcelListScreen() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <TopNav />
         <UserMenu />
       </header>
       <div className="app-body">
