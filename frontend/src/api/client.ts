@@ -7,17 +7,25 @@ export type LoginResponse = components["schemas"]["LoginResponse"];
 export type SetupStatusResponse = components["schemas"]["SetupStatusResponse"];
 export type CreateParcelRequest = components["schemas"]["CreateParcelRequest"];
 export type UpdateParcelRequest = components["schemas"]["UpdateParcelRequest"];
+export type DetectRequest = components["schemas"]["DetectRequest"];
+export type DetectResponse = components["schemas"]["DetectResponse"];
+export type Carrier = components["schemas"]["Carrier"];
+export type TrackingStatus = components["schemas"]["TrackingStatus"];
+export type Metadata = components["schemas"]["Metadata"];
+export type MetadataField = components["schemas"]["MetadataField"];
 export type ErrorResponse = components["schemas"]["ErrorResponse"];
 
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
+  readonly fields?: MetadataField[];
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, fields?: MetadataField[]) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.fields = fields;
   }
 }
 
@@ -67,6 +75,9 @@ export function createApiClient({ baseUrl, getToken, onUnauthorized }: ApiClient
       request<Parcel>("PATCH", `/api/v1/parcels/${id}`, body),
     deleteParcel: (id: string) => request<void>("DELETE", `/api/v1/parcels/${id}`),
     listParcelEvents: (id: string) => request<ParcelEvent[]>("GET", `/api/v1/parcels/${id}/events`),
+    detectCarrier: (body: DetectRequest) =>
+      request<DetectResponse>("POST", "/api/v1/parcels/detect", body),
+    refreshParcel: (id: string) => request<Parcel>("POST", `/api/v1/parcels/${id}/refresh`),
   };
 }
 
@@ -75,7 +86,8 @@ async function toApiError(response: Response): Promise<ApiError> {
   const data = (await response.json().catch(() => null)) as ErrorResponse | null;
   const error = data?.error;
   if (error && typeof error.code === "string" && typeof error.message === "string") {
-    return new ApiError(response.status, error.code, error.message);
+    const fields = Array.isArray(error.fields) ? error.fields : undefined;
+    return new ApiError(response.status, error.code, error.message, fields);
   }
   return new ApiError(response.status, "request-failed", fallback);
 }

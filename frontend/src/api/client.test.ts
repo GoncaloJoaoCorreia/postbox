@@ -115,4 +115,57 @@ describe("createApiClient", () => {
     expect(apiError.status).toBe(500);
     expect(apiError.code).toBe("request-failed");
   });
+
+  it("posts to the detect endpoint and returns the detection outcome", async () => {
+    let body: unknown = null;
+    mswServer.use(
+      http.post("*/api/v1/parcels/detect", async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({
+          trackingNumber: "1Z999AA10123456784",
+          carrier: "dhl",
+          method: "probe",
+          candidates: ["dhl", "ctt"],
+        });
+      }),
+    );
+    const client = createApiClient({ baseUrl: "", getToken: () => "t" });
+    const result = await client.detectCarrier({ trackingNumber: "1Z999AA10123456784" });
+    expect(body).toEqual({ trackingNumber: "1Z999AA10123456784" });
+    expect(result.carrier).toBe("dhl");
+    expect(result.method).toBe("probe");
+    expect(result.candidates).toEqual(["dhl", "ctt"]);
+  });
+
+  it("exposes error.fields on a 409 missing-carrier-metadata refresh response", async () => {
+    mswServer.use(
+      http.post("*/api/v1/parcels/p1/refresh", () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: "missing-carrier-metadata",
+              message: "The carrier requires additional metadata: postcode",
+              fields: [
+                {
+                  name: "postcode",
+                  label: "Recipient postcode",
+                  hint: "The 4 digits of your postcode",
+                  validationRegex: "\\d{4}",
+                },
+              ],
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    const client = createApiClient({ baseUrl: "", getToken: () => "t" });
+    const failure = await client.refreshParcel("p1").catch((e: unknown) => e);
+    expect(failure).toBeInstanceOf(ApiError);
+    const apiError = failure as ApiError;
+    expect(apiError.status).toBe(409);
+    expect(apiError.code).toBe("missing-carrier-metadata");
+    expect(apiError.fields?.[0]?.name).toBe("postcode");
+    expect(apiError.fields?.[0]?.validationRegex).toBe("\\d{4}");
+  });
 });
