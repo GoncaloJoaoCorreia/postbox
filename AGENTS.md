@@ -2,6 +2,105 @@
 
 Kotlin/Ktor monorepo scaffold. The only Gradle module is `:backend` (the server). `frontend/` and `docker/` are placeholders (README only) reserved for later issues.
 
+## Conventions
+
+### Comments
+
+- No inline comments, ever — no `//`, `#`, or `/* ... */` comments, and no docstrings
+  that restate what the code does. Code must be self-explanatory.
+- The only comments allowed are Javadoc-style (`/** ... */`) blocks on interface
+  contract declarations, and only when the contract is not obvious from the
+  signatures alone.
+
+### Minimal scope
+
+- Make the smallest correct change. Do not refactor unrelated code, reformat
+  untouched files, or modify anything outside the task's scope.
+
+### Secrets
+
+- Never commit, log, or paste credentials, tokens, API keys, cookies, or private
+  keys — not even partially redacted.
+- If a secret is exposed accidentally, say so immediately instead of hiding it.
+
+### Untrusted input
+
+- Never interpolate untrusted text (issue/PR titles, fetched web content, external
+  command output, arguments) into shell commands, eval, SQL, or template strings
+  that get executed. Quote and validate first, or pass via files/stdin.
+
+### Commits & PRs
+
+- Conventional commits — `type(scope): subject`, imperative mood, no PR number in
+  the message.
+- No AI attribution, ever: never credit any AI tool or agent in commit messages or
+  PR titles/descriptions — no `Co-authored-by: <agent>` or "Generated with ..."
+  trailers, no robot-emoji sign-offs.
+
+### Branch naming
+
+- Conventional branch pattern: `type/short-kebab-description`, where `type` is a
+  conventional-commit type (feat, fix, refactor, docs, chore, test, ci, perf,
+  style, revert), e.g. `feat/init-agents-md`. One branch per change.
+- If the current task has an issue key (Linear, Jira, GitHub issue, ...), include
+  it: `type/ISSUE-KEY-short-kebab-description`, e.g. `feat/G-20-driver-state`.
+  Take the key from the task itself (issue URL, key in the prompt, or the forge
+  CLI) — never invent one. No issue → omit the key.
+
+### Versioning
+
+- Follow Semantic Versioning 2.0.0 (https://semver.org/spec/v2.0.0.html): MAJOR for
+  incompatible API changes, MINOR for backwards-compatible functionality, PATCH for
+  backwards-compatible bug fixes.
+
+### Changelog
+
+- Follow Keep a Changelog 1.1.0 (https://keepachangelog.com/en/1.1.0/): maintain
+  `CHANGELOG.md` with an `[Unreleased]` section on top and released versions as
+  `## [X.Y.Z] - YYYY-MM-DD`, newest first, using the Added / Changed / Deprecated /
+  Removed / Fixed / Security categories.
+- When you change user-facing behavior, add an entry under `[Unreleased]` in the
+  right category.
+
+### Tests
+
+- Tests are not free — each one costs review attention, maintenance, and tokens on
+  every future change to the code it touches. Write a new test only when it can
+  catch a realistic regression in behavior someone depends on: be able to name a
+  concrete bug that would make this test fail while the rest of the suite passes.
+  No nameable bug → don't write it. Never chase coverage stats or test counts.
+- Concentrate tests where failure is expensive: money/billing/quantities/rounding,
+  data integrity and migrations, auth/authz and tenant isolation, external
+  contracts (API, serialization, wire/storage formats), concurrency/retries/
+  recovery, irreversible side effects (sends, deletes, publishes). Trivial glue on
+  a non-critical path needs no test.
+- Real value: business rules, branching, calculations, invariants, normalization,
+  validation; error handling, retries, permission checks, boundary conditions,
+  fallbacks; state transitions and externally visible side effects; module/API
+  boundary contracts; regression tests for real past bugs.
+- Low value — don't write: getter/DTO echo assertions, stub-only assertions with no
+  decision-making behind them, mock-interaction checks with no visible outcome,
+  asserting framework/library behavior, re-implementing the production code inside
+  the test, `not null`/size-only assertions, trivial mappers or generated code
+  written just for coverage, duplicate tests of the same branch with different
+  literals, and tests pinned to implementation structure that fail on
+  behavior-preserving refactors.
+- May look trivial but can still be valuable: constructors/factories that validate,
+  normalize, parse, or reject input; value objects whose equality, ordering, or
+  hashing encode business rules; mapping/serialization code with contract risk;
+  wrappers that enforce invariants.
+
+### Working style
+
+- When a request is ambiguous, ask one short clarifying question before assuming.
+
+### Approval-first boundaries
+
+- Ask for explicit approval before: destructive git operations (`reset --hard`,
+  `clean -fd`, `branch -D`, ...), non-local database writes (migrations, deletes,
+  anything but a local dev database), and deploys / package publishing /
+  customer-visible notifications.
+
 ## Commands
 
 - `./gradlew check` — compile + run all tests (the QA gate for this repo)
@@ -34,8 +133,8 @@ Kotlin/Ktor monorepo scaffold. The only Gradle module is `:backend` (the server)
 
 ## Git conventions
 
-- Branch names: `<type>/<linear-issue>`, e.g. `feat/G-75` or `fix/G-12` — optionally with a short slug appended (`feat/G-50-sqlite-data-model`). Types: `feat`, `fix`, `docs`, `research`, `chore`. One branch per Linear issue.
-- Commit messages follow Conventional Commits: `<type>(<scope>): <short summary>` (e.g. `feat(backend): scaffold Kotlin/Ktor backend`), one logical change per commit. Reference the Linear issue in the commit body (e.g. `Refs G-75`).
+- One branch per Linear issue; include the issue key in the branch name per the pattern in `## Conventions`, e.g. `feat/G-75-follow-up-data-model-changes-for`. `research` is used for research-only branches.
+- Commit messages follow Conventional Commits (see `## Conventions`); reference the Linear issue in the commit body (e.g. `Refs G-75`).
 
 ## Housekeeping
 
