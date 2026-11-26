@@ -9,6 +9,7 @@ import com.postbox.carrier.CarrierId
 import com.postbox.carrier.CarrierRateLimiter
 import com.postbox.carrier.CarrierRegistry
 import com.postbox.carrier.DhlAdapter
+import com.postbox.carrier.PaackAdapter
 import com.postbox.carrier.PostCttAdapter
 import com.postbox.db.ParcelRepository
 import com.postbox.db.UserRepository
@@ -90,6 +91,14 @@ fun Application.appDependencies(config: AppConfig, db: Database) {
                 PostCttAdapter(
                     client = resolve<CarrierHttpClients>()[CarrierId.CTT],
                     rateLimiter = config.carriers.getValue(CarrierId.CTT).toRateLimiter(),
+                )
+            }
+        }
+        if (config.carriers.containsKey(CarrierId.PAACK)) {
+            provide<CarrierAdapter>(name = CarrierId.PAACK.id) {
+                PaackAdapter(
+                    client = resolve<CarrierHttpClients>()[CarrierId.PAACK],
+                    rateLimiter = config.carriers.getValue(CarrierId.PAACK).toRateLimiter(),
                 )
             }
         }
