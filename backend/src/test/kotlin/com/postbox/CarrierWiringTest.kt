@@ -1,21 +1,46 @@
 package com.postbox
 
+import com.postbox.carrier.CarrierAdapter
+import com.postbox.carrier.CarrierHttpClients
 import com.postbox.carrier.CarrierId
+import com.postbox.carrier.CarrierRateLimiter
+import com.postbox.carrier.CarrierRegistry
+import com.postbox.carrier.FakeCarrier
 import com.postbox.db.closeDatabase
 import com.postbox.db.freshTestDatabase
 import com.typesafe.config.ConfigFactory
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.plugins.di.dependencies
+import io.ktor.server.plugins.di.provide
+import io.ktor.server.plugins.di.resolve
 import io.ktor.server.testing.testApplication
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
 class CarrierWiringTest {
+
+    private fun testConfig() = AppConfig(
+        host = "127.0.0.1",
+        port = 0, // testApplication runs in-process and does not bind a real port
+        jwtSecret = "test-secret",
+        sqlitePath = "build/tmp/test/postbox.db",
+        dataDir = "build/tmp/test-data",
+        carriers = mapOf(
+            CarrierId.DHL to CarrierSettings(
+                connectTimeoutMs = 5000,
+                socketTimeoutMs = 10000,
+                requestTimeoutMs = 10000,
+                userAgent = "postbox-test/1.0",
+                minRequestIntervalMs = 5000,
+            )
+        ),
+    )
 
     @Test
     fun `carrier config defaults parse for all carriers with DHL min interval 5000`() {
@@ -41,47 +66,31 @@ class CarrierWiringTest {
     }
 
     @Test
-    fun `module exposes the carrier registry via attributes and healthz still works`() = testApplication {
+    fun `module resolves carrier components from DI and healthz still works`() = testApplication {
         val db = freshTestDatabase("carrier-wiring")
         try {
             application {
-                module(
-                    AppConfig(
-                        host = "127.0.0.1",
-                        port = 0, // testApplication runs in-process and does not bind a real port
-                        jwtSecret = "test-secret",
-                        sqlitePath = "build/tmp/test/postbox.db",
-                        dataDir = "build/tmp/test-data",
-                        carriers = mapOf(
-                            CarrierId.DHL to CarrierSettings(
-                                connectTimeoutMs = 5000,
-                                socketTimeoutMs = 10000,
-                                requestTimeoutMs = 10000,
-                                userAgent = "postbox-test/1.0",
-                                minRequestIntervalMs = 5000,
-                            )
-                        ),
-                    ),
-                    db,
-                )
+                module(testConfig(), db)
             }
             // Ktor's testApplication starts the app lazily (on the first client call
-            // or via startApplication()); the module — and with it the attributes —
+            // or via startApplication()); the module — and with it the DI registry —
             // only exists once the application has started.
             startApplication()
             // testApplication never raises ApplicationStopping, so the per-carrier
             // clients must be closed here — in a finally, so a failed assertion
             // cannot leak the CIO engine for the rest of the test JVM.
-            val httpClients = application.attributes[CarrierHttpClientsAttribute]
+            val httpClients = application.dependencies.resolve<CarrierHttpClients>()
             try {
-                val registry = application.attributes[CarrierRegistryAttribute]
-                assertNotNull(registry)
+                val registry = application.dependencies.resolve<CarrierRegistry>()
                 // No real carrier adapters are registered yet.
                 assertNull(registry.lookup(CarrierId.DHL))
                 assertTrue(registry.all.isEmpty())
                 // The per-carrier clients and limiters were built from the same config entry.
                 assertEquals(setOf(CarrierId.DHL), httpClients.carriers)
-                assertEquals(setOf(CarrierId.DHL), application.attributes[CarrierRateLimitersAttribute].keys)
+                assertEquals(
+                    setOf(CarrierId.DHL),
+                    application.dependencies.resolve<Map<CarrierId, CarrierRateLimiter>>().keys,
+                )
 
                 val response = client.get("/healthz")
                 assertEquals(HttpStatusCode.OK, response.status)
@@ -95,11 +104,33 @@ class CarrierWiringTest {
     }
 
     @Test
+    fun `a named carrier adapter provided before the module lands in the registry`() = testApplication {
+        val db = freshTestDatabase("carrier-wiring-override")
+        val number = "1Z999AA10123456784"
+        val expected = FakeCarrier.deterministicResult(number)
+        val fake = FakeCarrier(CarrierId.DHL, results = mapOf(number to expected))
+        try {
+            application {
+                dependencies {
+                    provide<CarrierAdapter>(name = CarrierId.DHL.id) { fake }
+                }
+                module(testConfig(), db)
+            }
+            startApplication()
+            val registry = application.dependencies.resolve<CarrierRegistry>()
+            assertSame(fake, registry.lookup(CarrierId.DHL))
+            assertSame(expected, registry.lookup(CarrierId.DHL)?.track(number, emptyMap()))
+        } finally {
+            closeDatabase(db)
+        }
+    }
+
+    @Test
     fun `DHL rate limiter is built from the configured 5000 ms interval`() = runTest {
         val dhl = ConfigLoader.load(env = ConfigFactory.empty()).carriers.getValue(CarrierId.DHL)
         // IS-003: the interval comes from config, not a hardcoded constant. The virtual-time
         // spacing behavior itself stays owned by CarrierRateLimiterTest.
         assertEquals(5000L, dhl.minRequestIntervalMs)
-        dhl.toRateLimiter().acquire() // same construction the module wiring performs
+        dhl.toRateLimiter().acquire() // same construction the DI wiring performs
     }
 }

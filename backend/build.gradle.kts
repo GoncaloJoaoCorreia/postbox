@@ -17,6 +17,7 @@ dependencies {
     implementation(libs.ktor.server.netty)
     implementation(libs.ktor.server.content.negotiation)
     implementation(libs.ktor.server.auth)
+    implementation(libs.ktor.server.di)
     implementation(libs.java.jwt)
     implementation(libs.argon2.jvm)
     implementation(libs.ktor.serialization.kotlinx.json)
