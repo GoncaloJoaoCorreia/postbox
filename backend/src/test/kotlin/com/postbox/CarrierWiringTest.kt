@@ -7,6 +7,7 @@ import com.postbox.carrier.CarrierRateLimiter
 import com.postbox.carrier.CarrierRegistry
 import com.postbox.carrier.DhlAdapter
 import com.postbox.carrier.FakeCarrier
+import com.postbox.carrier.PostCttAdapter
 import com.postbox.db.closeDatabase
 import com.postbox.db.freshTestDatabase
 import com.postbox.service.DetectionService
@@ -29,22 +30,25 @@ import kotlinx.coroutines.test.runTest
 
 class CarrierWiringTest {
 
-    private fun testConfig(dhlApiKey: String? = null) = AppConfig(
+    private fun testConfig(
+        dhlApiKey: String? = null,
+        carriers: Set<CarrierId> = setOf(CarrierId.DHL),
+    ) = AppConfig(
         host = "127.0.0.1",
         port = 0, // testApplication runs in-process and does not bind a real port
         jwtSecret = "test-secret",
         sqlitePath = "build/tmp/test/postbox.db",
         dataDir = "build/tmp/test-data",
         dhlApiKey = dhlApiKey,
-        carriers = mapOf(
-            CarrierId.DHL to CarrierSettings(
+        carriers = carriers.associateWith {
+            CarrierSettings(
                 connectTimeoutMs = 5000,
                 socketTimeoutMs = 10000,
                 requestTimeoutMs = 10000,
                 userAgent = "postbox-test/1.0",
                 minRequestIntervalMs = 5000,
             )
-        ),
+        },
     )
 
     @Test
@@ -166,6 +170,30 @@ class CarrierWiringTest {
                 assertEquals(CarrierId.DHL, dhl?.carrier)
                 assertEquals(emptyMap(), dhl?.requiredMetadata)
                 assertEquals(listOf(dhl), registry.all)
+            } finally {
+                httpClients.close()
+            }
+        } finally {
+            closeDatabase(db)
+        }
+    }
+
+    @Test
+    fun `CTT adapter registers in the carrier registry when its carrier config block is present`() = testApplication {
+        val db = freshTestDatabase("carrier-wiring-ctt")
+        try {
+            application {
+                module(testConfig(carriers = setOf(CarrierId.CTT)), db)
+            }
+            startApplication()
+            val httpClients = application.dependencies.resolve<CarrierHttpClients>()
+            try {
+                val registry = application.dependencies.resolve<CarrierRegistry>()
+                val ctt = registry.lookup(CarrierId.CTT)
+                assertIs<PostCttAdapter>(ctt)
+                assertEquals(CarrierId.CTT, ctt?.carrier)
+                assertEquals(emptyMap(), ctt?.requiredMetadata)
+                assertEquals(listOf(ctt), registry.all)
             } finally {
                 httpClients.close()
             }

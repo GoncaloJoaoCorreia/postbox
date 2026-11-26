@@ -55,3 +55,10 @@ tasks.processResources {
         into("web")
     }
 }
+
+tasks.processTestResources {
+    from(rootProject.file("docs/carriers/fixtures")) {
+        include("ctt-*.json")
+        into("fixtures")
+    }
+}
