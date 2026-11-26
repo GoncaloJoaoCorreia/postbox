@@ -49,7 +49,7 @@ class OpenApiSpecTest {
             for (path in paths) {
                 assertTrue(spec.contains(path), "served spec is missing path $path")
             }
-            assertTrue(spec.contains("not_implemented"), "served spec should document the 501 envelope")
+            assertTrue(spec.contains("lastCheckError"), "served spec should document the soft refresh-failure indicator on Parcel")
             assertTrue(spec.contains("bearerAuth"), "served spec should declare the bearer security scheme")
         } finally {
             closeDatabase(db)

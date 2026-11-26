@@ -4,6 +4,9 @@ import com.postbox.carrier.CarrierId
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import java.io.File
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 
 /** Per-carrier settings parsed from the `postbox.carriers.<id>` block. */
 data class CarrierSettings(
@@ -14,6 +17,19 @@ data class CarrierSettings(
     val minRequestIntervalMs: Long,
 )
 
+/** On-demand refresh tuning parsed from the `postbox.refresh` block. */
+data class RefreshSettings(
+    val staleAfter: Duration,
+    val maxConcurrentProbes: Int,
+    val deliveredGrace: Duration,
+) {
+    init {
+        require(staleAfter > Duration.ZERO) { "staleAfter must be positive, was $staleAfter" }
+        require(maxConcurrentProbes >= 1) { "maxConcurrentProbes must be >= 1, was $maxConcurrentProbes" }
+        require(deliveredGrace >= Duration.ZERO) { "deliveredGrace must be >= 0, was $deliveredGrace" }
+    }
+}
+
 /** Runtime configuration of the backend. */
 data class AppConfig(
     val host: String,
@@ -22,6 +38,11 @@ data class AppConfig(
     val sqlitePath: String,
     val dataDir: String,
     val carriers: Map<CarrierId, CarrierSettings> = emptyMap(),
+    val refresh: RefreshSettings = RefreshSettings(
+        staleAfter = 30.minutes,
+        maxConcurrentProbes = 4,
+        deliveredGrace = 3.days,
+    ),
 )
 
 object ConfigLoader {
@@ -58,6 +79,11 @@ object ConfigLoader {
                         minRequestIntervalMs = carrierConfig.getLong("minRequestIntervalMs"),
                     )
                 },
+            refresh = RefreshSettings(
+                staleAfter = config.getInt("postbox.refresh.staleAfterMinutes").minutes,
+                maxConcurrentProbes = config.getInt("postbox.refresh.maxConcurrentProbes"),
+                deliveredGrace = config.getInt("postbox.refresh.deliveredGraceDays").days,
+            ),
         )
     }
 

@@ -4,6 +4,12 @@
 
 ### Added
 
+- On-demand refresh service: `GET /api/v1/parcels` refreshes parcels whose `last_checked_at` is older than a configurable TTL (default 30 minutes, `POSTBOX_REFRESH_STALE_AFTER_MINUTES`) before the response is returned; fresh parcels serve cached data with no carrier traffic, so repeated app opens within the TTL trigger no carrier calls
+- `POST /api/v1/parcels/{id}/refresh` forces a refresh regardless of TTL and returns `200` with the refreshed parcel (was `501 not_implemented`)
+- Refreshed parcels get new events inserted (deduplicated by the `uq_parcel_events_idempotency` unique index), status recalculated from the carrier result, and `last_checked_at` updated
+- In-flight carrier probes capped across a list refresh (`POSTBOX_REFRESH_MAX_CONCURRENT_PROBES`, default 4) while each carrier's own rate limiter stays respected; every probe is bounded by the carrier's configured request timeout, so one hanging carrier delays nothing beyond its own timeout
+- Carrier outages never block the list: cached data stays and the parcel is marked with a soft `lastCheckError` (`carrier unreachable, data from ...`) — new `parcels.last_check_error` column (migration V3), exposed as `lastCheckError` on parcel responses and cleared on the next successful refresh
+- DELIVERED parcels skip refresh once a configurable grace window (default 3 days, `POSTBOX_REFRESH_DELIVERED_GRACE_DAYS`) has passed since their last check
 - Tracking number detection engine: per-carrier format rules produce a ranked candidate list (v1: DHL, CTT, Paack, EcoScooting), registered candidate adapters are probed in parallel (paced by the per-carrier rate limiters) and the first carrier returning real tracking data wins; a manual carrier override always wins and is never probed; when no carrier knows the number yet the top-ranked candidate is kept provisionally (`rule`) for later re-probes
 - `POST /api/v1/parcels/detect` answers `200` with the resolved carrier, the method (`rule` | `probe` | `override`) and the ranked candidates
 - Parcels store the detection outcome in `detection_method` (migration V2) so it can be corrected later; parcel responses include `detectionMethod`
@@ -16,6 +22,8 @@
 
 ### Changed
 
+- `GET /api/v1/parcels` now refreshes stale parcels on open instead of serving cached data only
+- `POST /api/v1/parcels/{id}/refresh` returns `200` with the refreshed parcel instead of `501 not_implemented`
 - `POST /api/v1/parcels` without an explicit `carrier` runs detection and stores the outcome (`carrier` + `detectionMethod`) on the new parcel; an explicit `carrier` is stored as `override`
 - `PATCH /api/v1/parcels/{id}` with a `carrier` records `detectionMethod: override`
 - Admin user management consolidated into `PATCH /api/v1/admin/users/{id}` (deactivate/reactivate, reset password); the `POST /api/v1/admin/users/{id}/deactivate|reactivate|reset-password` sub-routes are replaced

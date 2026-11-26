@@ -2,8 +2,6 @@ package com.postbox.service
 
 import com.postbox.carrier.CarrierId
 
-class ServiceNotImplemented(val feature: String) : Exception("Not implemented yet: $feature")
-
 enum class DetectionMethod {
     RULE,
     PROBE,
