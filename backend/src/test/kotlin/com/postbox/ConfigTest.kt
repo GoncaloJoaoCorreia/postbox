@@ -3,6 +3,8 @@ package com.postbox
 import com.typesafe.config.ConfigFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 
 class ConfigTest {
 
@@ -14,6 +16,9 @@ class ConfigTest {
             JWT_SECRET = "test-secret"
             SQLITE_PATH = "build/tmp/test.db"
             DATA_DIR = "build/tmp/test-data"
+            POSTBOX_REFRESH_STALE_AFTER_MINUTES = "5"
+            POSTBOX_REFRESH_MAX_CONCURRENT_PROBES = "2"
+            POSTBOX_REFRESH_DELIVERED_GRACE_DAYS = "7"
             """.trimIndent()
         )
         val config = ConfigLoader.load(env = env)
@@ -21,6 +26,9 @@ class ConfigTest {
         assertEquals("test-secret", config.jwtSecret)
         assertEquals("build/tmp/test.db", config.sqlitePath)
         assertEquals("build/tmp/test-data", config.dataDir)
+        assertEquals(5.minutes, config.refresh.staleAfter)
+        assertEquals(2, config.refresh.maxConcurrentProbes)
+        assertEquals(7.days, config.refresh.deliveredGrace)
     }
 
     @Test
@@ -30,5 +38,8 @@ class ConfigTest {
         assertEquals(8080, config.port)
         assertEquals("data/postbox.db", config.sqlitePath)
         assertEquals("data", config.dataDir)
+        assertEquals(30.minutes, config.refresh.staleAfter)
+        assertEquals(4, config.refresh.maxConcurrentProbes)
+        assertEquals(3.days, config.refresh.deliveredGrace)
     }
 }

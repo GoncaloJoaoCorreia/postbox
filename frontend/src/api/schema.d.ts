@@ -157,8 +157,13 @@ export interface paths {
          * @description Returns all parcels owned by the caller (including archived ones, visible via
          *     `archivedAt`), each with its current `status` and `latestEvent`. Parcels with a
          *     newer latest event sort first; parcels without events sort last by creation time.
-         *     Serves cached data only — stale parcels are not refreshed here (that behavior is
-         *     deferred to the refresh service).
+         *
+         *     On-demand refresh: before the response is returned, parcels whose `lastCheckedAt`
+         *     is older than the refresh TTL (default 30 minutes) are refreshed from their
+         *     carrier; fresh parcels serve cached data with no carrier traffic. DELIVERED
+         *     parcels skip refresh once a grace window (default 3 days) has passed since their
+         *     last check. A carrier outage never fails the list: cached data is served and the
+         *     parcel carries a soft `lastCheckError` indicator (`carrier unreachable, data from ...`).
          */
         get: operations["listParcels"];
         put?: never;
@@ -250,8 +255,10 @@ export interface paths {
         put?: never;
         /**
          * Force a refresh of an own parcel regardless of staleness
-         * @description Wired but not implemented yet — responds `501 not_implemented` until the
-         *     refresh service lands.
+         * @description Forces a refresh regardless of the TTL: new events are inserted (deduplicated by
+         *     the idempotency index), the status is recalculated and `lastCheckedAt` updated.
+         *     If the carrier is unavailable, cached data stays and the parcel is marked with a
+         *     soft `lastCheckError` indicator instead of failing.
          */
         post: operations["refreshParcel"];
         delete?: never;
@@ -272,9 +279,9 @@ export interface components {
             error: components["schemas"]["ApiError"];
         };
         ApiError: {
-            /** @example not_implemented */
+            /** @example parcel-not-found */
             code: string;
-            /** @example Parcel refresh is not implemented yet */
+            /** @example No parcel with this id exists */
             message: string;
         };
         SetupStatusResponse: {
@@ -374,6 +381,12 @@ export interface components {
             metadata?: components["schemas"]["Metadata"] | null;
             /** Format: date-time */
             lastCheckedAt?: string | null;
+            /**
+             * @description Soft refresh-failure indicator, e.g. `carrier unreachable, data from
+             *     2026-11-26T15:00:00.000Z`. Null when the last check succeeded or the parcel
+             *     was never checked.
+             */
+            lastCheckError?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -477,23 +490,6 @@ export interface components {
                  *       "error": {
                  *         "code": "email-already-used",
                  *         "message": "An account with this email already exists"
-                 *       }
-                 *     }
-                 */
-                "application/json": components["schemas"]["ErrorResponse"];
-            };
-        };
-        /** @description Route is wired but its service is deferred */
-        NotImplemented: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "error": {
-                 *         "code": "not_implemented",
-                 *         "message": "Parcel refresh is not implemented yet"
                  *       }
                  *     }
                  */
@@ -941,7 +937,6 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
-            501: components["responses"]["NotImplemented"];
         };
     };
 }

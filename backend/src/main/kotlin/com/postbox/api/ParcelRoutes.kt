@@ -8,8 +8,8 @@ import com.postbox.db.nowIso
 import com.postbox.service.DetectionMethod
 import com.postbox.service.DetectionResult
 import com.postbox.service.DetectionService
+import com.postbox.service.ParcelNotFound
 import com.postbox.service.RefreshService
-import com.postbox.service.ServiceNotImplemented
 import com.postbox.service.TrackingNumberRules
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
@@ -36,7 +36,8 @@ fun Route.parcelRoutes(
         get {
             val userId = call.currentUserId()
             val owned = withContext(Dispatchers.IO) { parcels.listParcelsForUser(userId) }
-            val responses = owned.map { it.toApiResponse(parcels, userId) }
+            val refreshed = refreshService.refreshStale(owned)
+            val responses = refreshed.map { it.toApiResponse(parcels, userId) }
             call.respond(
                 responses.sortedWith(
                     compareByDescending<ParcelResponse> { it.latestEvent?.occurredAt ?: "" }
@@ -153,6 +154,7 @@ fun Route.parcelRoutes(
                         carrierMetadata = req.metadata?.let { Json.encodeToString(it) } ?: parcel.carrierMetadata,
                         lastCheckedAt = parcel.lastCheckedAt,
                         archivedAt = archivedAt,
+                        lastCheckError = parcel.lastCheckError,
                     )
                 }
                 val reloaded = withContext(Dispatchers.IO) { parcels.findParcelForUser(userId, parcel.id) }!!
@@ -174,12 +176,8 @@ fun Route.parcelRoutes(
                 try {
                     val refreshed = refreshService.refresh(userId, parcel.id)
                     call.respond(refreshed.toApiResponse(parcels, userId))
-                } catch (e: ServiceNotImplemented) {
-                    call.respondError(
-                        HttpStatusCode.NotImplemented,
-                        "not_implemented",
-                        "Parcel refresh is not implemented yet",
-                    )
+                } catch (e: ParcelNotFound) {
+                    call.parcelNotFound()
                 }
             }
         }

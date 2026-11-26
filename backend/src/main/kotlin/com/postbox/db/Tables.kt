@@ -29,6 +29,7 @@ object Parcels : Table("parcels") {
     val status = text("status")
     val carrierMetadata = text("carrier_metadata").nullable()
     val lastCheckedAt = text("last_checked_at").nullable()
+    val lastCheckError = text("last_check_error").nullable()
     val createdAt = text("created_at")
     val archivedAt = text("archived_at").nullable()
 

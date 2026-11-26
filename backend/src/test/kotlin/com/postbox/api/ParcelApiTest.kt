@@ -320,18 +320,22 @@ class ParcelApiTest {
     }
 
     @Test
-    fun `refresh responds 501 for an own parcel and 404 for another user's parcel`() = withApp("refresh-501") { _ ->
-        val adminToken = adminToken()
-        val aliceToken = userToken(adminToken, "alice@example.com", "alice-password-1")
-        val bobToken = userToken(adminToken, "bob@example.com", "bob-password-1")
-        val id = createParcelAndGetId(aliceToken, "1Z999AA10123456784")
+    fun `refresh without a registered adapter keeps cached data with a soft lastCheckError and 404s for other users`() =
+        withApp("refresh-soft-no-adapter") { _ ->
+            val adminToken = adminToken()
+            val aliceToken = userToken(adminToken, "alice@example.com", "alice-password-1")
+            val bobToken = userToken(adminToken, "bob@example.com", "bob-password-1")
+            val id = createParcelAndGetId(aliceToken, "1Z999AA10123456784")
 
-        val own = postJson("/api/v1/parcels/$id/refresh", "", aliceToken)
-        assertEquals(HttpStatusCode.NotImplemented, own.status)
-        assertEquals("not_implemented", errorCode(own))
+            val own = postJson("/api/v1/parcels/$id/refresh", "", aliceToken)
+            assertEquals(HttpStatusCode.OK, own.status)
+            val body = bodyJson(own)
+            assertEquals("UNKNOWN", body.getValue("status").jsonPrimitive.content)
+            assertNotNull(body["lastCheckedAt"])
+            assertTrue(body.getValue("lastCheckError").jsonPrimitive.content.startsWith("carrier unreachable"))
 
-        val foreign = postJson("/api/v1/parcels/$id/refresh", "", bobToken)
-        assertEquals(HttpStatusCode.NotFound, foreign.status)
-        assertEquals("parcel-not-found", errorCode(foreign))
-    }
+            val foreign = postJson("/api/v1/parcels/$id/refresh", "", bobToken)
+            assertEquals(HttpStatusCode.NotFound, foreign.status)
+            assertEquals("parcel-not-found", errorCode(foreign))
+        }
 }

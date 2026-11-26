@@ -9,8 +9,7 @@ info:
     Authentication is bearer-token based everywhere except first-run setup and login:
     `Authorization: Bearer <token>` with a HS256 JWT. All error responses share one
     envelope: `{"error": {"code": "...", "message": "..."}}` — including 401 for
-    missing/invalid tokens and the temporary `501 not_implemented` on the deferred
-    refresh endpoint (`POST /api/v1/parcels/{id}/refresh`).
+    missing/invalid tokens.
 
     Parcel ids of other users return 404 (never 403) so ids cannot be enumerated.
 servers:
@@ -224,8 +223,13 @@ paths:
         Returns all parcels owned by the caller (including archived ones, visible via
         `archivedAt`), each with its current `status` and `latestEvent`. Parcels with a
         newer latest event sort first; parcels without events sort last by creation time.
-        Serves cached data only — stale parcels are not refreshed here (that behavior is
-        deferred to the refresh service).
+
+        On-demand refresh: before the response is returned, parcels whose `lastCheckedAt`
+        is older than the refresh TTL (default 30 minutes) are refreshed from their
+        carrier; fresh parcels serve cached data with no carrier traffic. DELIVERED
+        parcels skip refresh once a grace window (default 3 days) has passed since their
+        last check. A carrier outage never fails the list: cached data is served and the
+        parcel carries a soft `lastCheckError` indicator (`carrier unreachable, data from ...`).
       responses:
         '200':
           description: The caller's parcels
@@ -376,8 +380,10 @@ paths:
       operationId: refreshParcel
       summary: Force a refresh of an own parcel regardless of staleness
       description: |
-        Wired but not implemented yet — responds `501 not_implemented` until the
-        refresh service lands.
+        Forces a refresh regardless of the TTL: new events are inserted (deduplicated by
+        the idempotency index), the status is recalculated and `lastCheckedAt` updated.
+        If the carrier is unavailable, cached data stays and the parcel is marked with a
+        soft `lastCheckError` indicator instead of failing.
       parameters:
         - $ref: '#/components/parameters/ParcelId'
       responses:
@@ -391,8 +397,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
 components:
   securitySchemes:
     bearerAuth:
@@ -465,16 +469,6 @@ components:
             error:
               code: email-already-used
               message: An account with this email already exists
-    NotImplemented:
-      description: Route is wired but its service is deferred
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          example:
-            error:
-              code: not_implemented
-              message: Parcel refresh is not implemented yet
   schemas:
     HealthStatus:
       type: object
@@ -495,10 +489,10 @@ components:
       properties:
         code:
           type: string
-          example: not_implemented
+          example: parcel-not-found
         message:
           type: string
-          example: Parcel refresh is not implemented yet
+          example: No parcel with this id exists
     SetupStatusResponse:
       type: object
       required: [setupPending]
@@ -677,6 +671,13 @@ components:
           type: string
           format: date-time
           nullable: true
+        lastCheckError:
+          type: string
+          nullable: true
+          description: |
+            Soft refresh-failure indicator, e.g. `carrier unreachable, data from
+            2026-11-26T15:00:00.000Z`. Null when the last check succeeded or the parcel
+            was never checked.
         createdAt:
           type: string
           format: date-time

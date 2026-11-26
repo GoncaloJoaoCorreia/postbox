@@ -10,8 +10,8 @@ import com.postbox.carrier.CarrierRateLimiter
 import com.postbox.carrier.CarrierRegistry
 import com.postbox.db.ParcelRepository
 import com.postbox.db.UserRepository
+import com.postbox.service.DefaultRefreshService
 import com.postbox.service.DetectionService
-import com.postbox.service.NotImplementedRefreshService
 import com.postbox.service.RefreshService
 import com.postbox.service.RuleBasedDetectionService
 import io.ktor.server.application.Application
@@ -43,7 +43,16 @@ fun Application.appDependencies(config: AppConfig, db: Database) {
         provide<DetectionService> {
             RuleBasedDetectionService(resolve<CarrierRegistry>(), resolve<Map<CarrierId, CarrierRateLimiter>>())
         }
-        provide<RefreshService> { NotImplementedRefreshService }
+        provide<RefreshService> {
+            val appConfig = resolve<AppConfig>()
+            DefaultRefreshService(
+                parcels = resolve(),
+                registry = resolve<CarrierRegistry>(),
+                rateLimiters = resolve<Map<CarrierId, CarrierRateLimiter>>(),
+                settings = appConfig.refresh,
+                probeTimeouts = appConfig.carriers.mapValues { (_, s) -> s.requestTimeoutMs.milliseconds },
+            )
+        }
         provide<CarrierHttpClients> {
             CarrierHttpClients(
                 resolve<AppConfig>().carriers.mapValues { (_, settings) -> settings.toClientSettings() }

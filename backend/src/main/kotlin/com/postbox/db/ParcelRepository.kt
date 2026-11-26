@@ -23,6 +23,7 @@ data class ParcelRecord(
     val status: String,
     val carrierMetadata: String?,
     val lastCheckedAt: String?,
+    val lastCheckError: String?,
     val createdAt: String,
     val archivedAt: String?,
 )
@@ -82,6 +83,7 @@ class ParcelRepository(private val db: Database) {
             status = status,
             carrierMetadata = carrierMetadata,
             lastCheckedAt = lastCheckedAt,
+            lastCheckError = null,
             createdAt = createdAt,
             archivedAt = null,
         )
@@ -109,6 +111,7 @@ class ParcelRepository(private val db: Database) {
         carrierMetadata: String?,
         lastCheckedAt: String?,
         archivedAt: String?,
+        lastCheckError: String?,
     ): Int = dbQuery(db) {
         Parcels.update({ (Parcels.id eq parcelId) and (Parcels.userId eq userId) }) {
             it[Parcels.displayName] = displayName
@@ -118,6 +121,7 @@ class ParcelRepository(private val db: Database) {
             it[Parcels.carrierMetadata] = carrierMetadata
             it[Parcels.lastCheckedAt] = lastCheckedAt
             it[Parcels.archivedAt] = archivedAt
+            it[Parcels.lastCheckError] = lastCheckError
         }
     }
 
@@ -209,6 +213,7 @@ class ParcelRepository(private val db: Database) {
         status = row[Parcels.status],
         carrierMetadata = row[Parcels.carrierMetadata],
         lastCheckedAt = row[Parcels.lastCheckedAt],
+        lastCheckError = row[Parcels.lastCheckError],
         createdAt = row[Parcels.createdAt],
         archivedAt = row[Parcels.archivedAt],
     )

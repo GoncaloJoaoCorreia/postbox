@@ -1,18 +1,194 @@
 package com.postbox.service
 
+import com.postbox.RefreshSettings
+import com.postbox.carrier.CarrierAdapter
+import com.postbox.carrier.CarrierId
+import com.postbox.carrier.CarrierRateLimiter
+import com.postbox.carrier.CarrierRegistry
+import com.postbox.carrier.TrackingEvent
+import com.postbox.carrier.TrackingResult
+import com.postbox.carrier.TrackingStatus
 import com.postbox.db.ParcelRecord
+import com.postbox.db.ParcelRepository
+import com.postbox.db.isoUtc
+import com.postbox.db.parseIsoUtc
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import org.slf4j.LoggerFactory
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 /**
- * Refreshes one parcel from its carrier: new events inserted, status
- * recalculated, `last_checked_at` updated, and the updated parcel returned.
- * The API layer maps [ServiceNotImplemented] from the wired default to
- * `501 not_implemented`.
+ * On-demand refresh: [refreshStale] refreshes the stale parcels of a list before
+ * the app-open response is returned, and [refresh] forces one parcel regardless of
+ * staleness. A carrier failure never fails the call — cached data stays and the
+ * parcel is marked with a soft `lastCheckError` indicator.
  */
 interface RefreshService {
+    /** Forces a refresh of one own parcel, regardless of TTL or final-state grace. */
     suspend fun refresh(userId: String, parcelId: String): ParcelRecord
+
+    /**
+     * Refreshes the stale parcels in [owned] (TTL and final-state grace apply) and
+     * returns the full list with the refreshed records in place, order preserved.
+     */
+    suspend fun refreshStale(owned: List<ParcelRecord>): List<ParcelRecord>
 }
 
-object NotImplementedRefreshService : RefreshService {
-    override suspend fun refresh(userId: String, parcelId: String): ParcelRecord =
-        throw ServiceNotImplemented("POST /api/v1/parcels/{id}/refresh")
+/** Thrown when [RefreshService.refresh] is called for a parcel that does not exist (or belongs to another user). */
+class ParcelNotFound(val parcelId: String) : Exception("No parcel with this id exists")
+
+/**
+ * Refreshes parcels from their registered carrier adapter: new events are inserted
+ * (deduplicated by the `uq_parcel_events_idempotency` unique index), the status is
+ * recalculated from the carrier result and `last_checked_at` is updated.
+ *
+ * Staleness: a parcel with no `last_checked_at`, or older than [RefreshSettings.staleAfter],
+ * is refreshed. DELIVERED parcels skip refresh once [RefreshSettings.deliveredGrace] has
+ * passed since their last check. In-flight carrier probes are capped at
+ * [RefreshSettings.maxConcurrentProbes] while each carrier's own rate limiter is always
+ * respected, and every probe is bounded by the carrier's configured request timeout, so
+ * one hanging carrier delays nothing beyond its own timeout. A failed probe (error or
+ * timeout) leaves the cached data untouched and marks the parcel with a soft
+ * "carrier unreachable, data from {time}" indicator.
+ */
+class DefaultRefreshService(
+    private val parcels: ParcelRepository,
+    private val registry: CarrierRegistry,
+    private val rateLimiters: Map<CarrierId, CarrierRateLimiter>,
+    private val settings: RefreshSettings,
+    private val probeTimeouts: Map<CarrierId, Duration>,
+    private val clock: Clock = Clock.System,
+) : RefreshService {
+
+    private val probeSlots = Semaphore(settings.maxConcurrentProbes)
+
+    /** SQLite allows a single writer; serialize the DB-write sections of concurrent refreshes. */
+    private val dbMutex = Mutex()
+
+    override suspend fun refresh(userId: String, parcelId: String): ParcelRecord {
+        val parcel = withContext(Dispatchers.IO) { parcels.findParcelForUser(userId, parcelId) }
+            ?: throw ParcelNotFound(parcelId)
+        return refreshParcel(parcel)
+    }
+
+    override suspend fun refreshStale(owned: List<ParcelRecord>): List<ParcelRecord> {
+        val now = clock.now()
+        return coroutineScope {
+            owned.map { parcel ->
+                async { if (isStale(parcel, now)) refreshParcel(parcel) else parcel }
+            }.awaitAll()
+        }
+    }
+
+    private fun isStale(parcel: ParcelRecord, now: Instant): Boolean {
+        val lastCheckedAt = parcel.lastCheckedAt?.let(::parseIsoUtc) ?: return true
+        if (parcel.status == TrackingStatus.DELIVERED.name && now - lastCheckedAt > settings.deliveredGrace) {
+            return false
+        }
+        return now - lastCheckedAt > settings.staleAfter
+    }
+
+    private suspend fun refreshParcel(parcel: ParcelRecord): ParcelRecord {
+        val carrier = parcel.carrier?.let(CarrierId::fromId) ?: return parcel
+        val adapter = registry.lookup(carrier) ?: return markUnreachable(parcel)
+        val result = probe(carrier, adapter, parcel) ?: return markUnreachable(parcel)
+        dbMutex.withLock {
+            for (event in result.events) {
+                withContext(Dispatchers.IO) {
+                    parcels.addEventForUser(
+                        userId = parcel.userId,
+                        parcelId = parcel.id,
+                        occurredAt = isoUtc(event.occurredAt),
+                        status = event.status.name,
+                        description = event.description,
+                        location = event.location,
+                        raw = rawEventJson(event),
+                    )
+                }
+            }
+        }
+        return persist(parcel, status = result.status.name, lastCheckedAt = isoUtc(clock.now()), lastCheckError = null)
+    }
+
+    private suspend fun probe(carrier: CarrierId, adapter: CarrierAdapter, parcel: ParcelRecord): TrackingResult? {
+        val metadata = parcel.carrierMetadata
+            ?.let { Json.decodeFromString<Map<String, String>>(it) }
+            ?: emptyMap()
+        val timeout = probeTimeouts[carrier] ?: DEFAULT_PROBE_TIMEOUT
+        return try {
+            rateLimiters[carrier]?.acquire()
+            probeSlots.withPermit {
+                withTimeoutOrNull(timeout) { adapter.track(parcel.trackingNumber, metadata) }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            log.warn("Carrier '{}' probe for parcel {} failed: {}", carrier.id, parcel.id, e.message)
+            null
+        }
+    }
+
+    private suspend fun markUnreachable(parcel: ParcelRecord): ParcelRecord {
+        val dataFrom = parcel.lastCheckedAt?.let { "data from $it" } ?: "no carrier data yet"
+        return persist(
+            parcel,
+            status = parcel.status,
+            lastCheckedAt = isoUtc(clock.now()),
+            lastCheckError = "carrier unreachable, $dataFrom",
+        )
+    }
+
+    private suspend fun persist(
+        parcel: ParcelRecord,
+        status: String,
+        lastCheckedAt: String?,
+        lastCheckError: String?,
+    ): ParcelRecord {
+        return dbMutex.withLock {
+            withContext(Dispatchers.IO) {
+                parcels.updateParcelForUser(
+                    userId = parcel.userId,
+                    parcelId = parcel.id,
+                    displayName = parcel.displayName,
+                    status = status,
+                    carrier = parcel.carrier,
+                    detectionMethod = parcel.detectionMethod,
+                    carrierMetadata = parcel.carrierMetadata,
+                    lastCheckedAt = lastCheckedAt,
+                    archivedAt = parcel.archivedAt,
+                    lastCheckError = lastCheckError,
+                )
+                parcels.findParcelForUser(parcel.userId, parcel.id)!!
+            }
+        }
+    }
+
+    private fun rawEventJson(event: TrackingEvent): String = Json.encodeToString(
+        buildJsonObject {
+            put("occurredAt", isoUtc(event.occurredAt))
+            put("status", event.status.name)
+            put("description", event.description)
+            event.location?.let { put("location", it) }
+        },
+    )
+
+    companion object {
+        private val log = LoggerFactory.getLogger(DefaultRefreshService::class.java)
+        private val DEFAULT_PROBE_TIMEOUT = 10.seconds
+    }
 }
