@@ -19,8 +19,7 @@ fun Route.authRoutes(users: UserRepository, hasher: PasswordHasher, jwtService: 
         val credentials = withContext(Dispatchers.IO) { users.findCredentialsByEmail(req.email) }
         val passwordOk = hasher.verify(credentials?.passwordHash ?: dummyHash, req.password)
         if (credentials == null || !passwordOk || !credentials.user.isActive) {
-            call.respond(HttpStatusCode.Unauthorized, ErrorResponse("invalid-credentials"))
-            return@post
+            throw ApiException(HttpStatusCode.Unauthorized, "invalid-credentials", "Invalid email or password")
         }
         call.respond(LoginResponse(token = jwtService.issue(credentials.user)))
     }

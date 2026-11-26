@@ -18,6 +18,7 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
@@ -67,6 +68,9 @@ class AuthApiTest {
         bearerAuth(token)
     }
 
+    private suspend fun ApplicationTestBuilder.getJson(path: String, token: String): HttpResponse =
+        client.get(path) { bearerAuth(token) }
+
     private suspend fun ApplicationTestBuilder.setupAdmin(
         email: String = "admin@example.com",
         password: String = "admin-password-1",
@@ -87,11 +91,28 @@ class AuthApiTest {
         return loginToken("admin@example.com", "admin-password-1")
     }
 
+    private suspend fun ApplicationTestBuilder.createUser(
+        adminToken: String,
+        email: String,
+        password: String,
+    ): String {
+        val created = postJson(
+            "/api/v1/admin/users",
+            """{"email":"$email","password":"$password"}""",
+            token = adminToken,
+        )
+        assertEquals(HttpStatusCode.Created, created.status)
+        return bodyJson(created).getValue("id").jsonPrimitive.content
+    }
+
     private suspend fun tokenOf(response: HttpResponse): String =
         Json.parseToJsonElement(response.bodyAsText()).jsonObject.getValue("token").jsonPrimitive.content
 
     private suspend fun bodyJson(response: HttpResponse) =
         Json.parseToJsonElement(response.bodyAsText()).jsonObject
+
+    private suspend fun errorCode(response: HttpResponse): String =
+        bodyJson(response).getValue("error").jsonObject.getValue("code").jsonPrimitive.content
 
     @Test
     fun `fresh database reports setup pending, first setup creates the admin, then setup refuses`() = withApp("setup-flow") {
@@ -113,21 +134,24 @@ class AuthApiTest {
 
         val again = setupAdmin(email = "second@example.com", password = "second-password-1")
         assertEquals(HttpStatusCode.Conflict, again.status)
+        assertEquals("setup-already-completed", errorCode(again))
     }
 
     @Test
     fun `setup rejects malformed email and too-short password without creating an account`() = withApp("setup-validation") {
         val badEmail = setupAdmin(email = "not-an-email")
         assertEquals(HttpStatusCode.BadRequest, badEmail.status)
+        assertEquals("invalid-email", errorCode(badEmail))
         val shortPassword = setupAdmin(password = "short")
         assertEquals(HttpStatusCode.BadRequest, shortPassword.status)
+        assertEquals("password-too-short", errorCode(shortPassword))
 
         val status = client.get("/api/v1/setup/status")
         assertTrue(bodyJson(status).getValue("setupPending").jsonPrimitive.boolean)
     }
 
     @Test
-    fun `login returns a JWT and the 401 body never reveals whether the email exists`() = withApp("login") {
+    fun `login returns a JWT and the 401 envelope never reveals whether the email exists`() = withApp("login") {
         assertEquals(HttpStatusCode.Created, setupAdmin().status)
 
         val ok = login("admin@example.com", "admin-password-1")
@@ -136,13 +160,14 @@ class AuthApiTest {
 
         val wrongPassword = login("admin@example.com", "wrong-password-1")
         assertEquals(HttpStatusCode.Unauthorized, wrongPassword.status)
+        assertEquals("invalid-credentials", errorCode(wrongPassword))
         val unknownEmail = login("ghost@example.com", "whatever-123")
         assertEquals(HttpStatusCode.Unauthorized, unknownEmail.status)
         assertEquals(wrongPassword.bodyAsText(), unknownEmail.bodyAsText())
     }
 
     @Test
-    fun `protected routes return 401 without a valid bearer token`() = withApp("protected-401") {
+    fun `protected routes return the unauthorized envelope without a valid bearer token`() = withApp("protected-401") {
         assertEquals(HttpStatusCode.Created, setupAdmin().status)
 
         val meNoToken = client.patch("/api/v1/me") {
@@ -150,6 +175,11 @@ class AuthApiTest {
             setBody("""{"newPassword":"new-password-1"}""")
         }
         assertEquals(HttpStatusCode.Unauthorized, meNoToken.status)
+        assertEquals("unauthorized", errorCode(meNoToken))
+
+        val parcelsNoToken = client.get("/api/v1/parcels")
+        assertEquals(HttpStatusCode.Unauthorized, parcelsNoToken.status)
+        assertEquals("unauthorized", errorCode(parcelsNoToken))
 
         val adminNoToken = postJson("/api/v1/admin/users", """{"email":"x@example.com","password":"password-123"}""")
         assertEquals(HttpStatusCode.Unauthorized, adminNoToken.status)
@@ -160,40 +190,52 @@ class AuthApiTest {
             token = "not-a-jwt",
         )
         assertEquals(HttpStatusCode.Unauthorized, garbageToken.status)
+        assertEquals("unauthorized", errorCode(garbageToken))
     }
 
     @Test
-    fun `a non-admin token gets 403 on admin routes`() = withApp("admin-403") {
+    fun `a non-admin token gets 403 admin-required on every admin route`() = withApp("admin-403") {
         val adminToken = adminToken()
-        val created = postJson(
-            "/api/v1/admin/users",
-            """{"email":"bob@example.com","password":"bob-password-1"}""",
-            token = adminToken,
-        )
-        assertEquals(HttpStatusCode.Created, created.status)
-        val bobId = bodyJson(created).getValue("id").jsonPrimitive.content
-
+        val bobId = createUser(adminToken, "bob@example.com", "bob-password-1")
         val bobToken = loginToken("bob@example.com", "bob-password-1")
-        val forbidden = postJson(
+
+        val forbiddenList = getJson("/api/v1/admin/users", bobToken)
+        assertEquals(HttpStatusCode.Forbidden, forbiddenList.status)
+        assertEquals("admin-required", errorCode(forbiddenList))
+        val forbiddenCreate = postJson(
             "/api/v1/admin/users",
             """{"email":"eve@example.com","password":"eve-password-1"}""",
             token = bobToken,
         )
-        assertEquals(HttpStatusCode.Forbidden, forbidden.status)
-        val forbiddenDeactivate = postJson("/api/v1/admin/users/$bobId/deactivate", "", token = bobToken)
-        assertEquals(HttpStatusCode.Forbidden, forbiddenDeactivate.status)
+        assertEquals(HttpStatusCode.Forbidden, forbiddenCreate.status)
+        assertEquals("admin-required", errorCode(forbiddenCreate))
+        val forbiddenPatch = patchJson("/api/v1/admin/users/$bobId", """{"isActive":false}""", bobToken)
+        assertEquals(HttpStatusCode.Forbidden, forbiddenPatch.status)
+        assertEquals("admin-required", errorCode(forbiddenPatch))
+    }
+
+    @Test
+    fun `admin lists all accounts and reads the caller via GET me`() = withApp("admin-list-me") {
+        val adminToken = adminToken()
+        createUser(adminToken, "bob@example.com", "bob-password-1")
+
+        val list = getJson("/api/v1/admin/users", adminToken)
+        assertEquals(HttpStatusCode.OK, list.status)
+        val users = Json.parseToJsonElement(list.bodyAsText()).jsonArray
+        assertEquals(2, users.size)
+        assertEquals("admin@example.com", users[0].jsonObject.getValue("email").jsonPrimitive.content)
+        assertEquals("bob@example.com", users[1].jsonObject.getValue("email").jsonPrimitive.content)
+
+        val me = getJson("/api/v1/me", adminToken)
+        assertEquals(HttpStatusCode.OK, me.status)
+        assertEquals("admin@example.com", bodyJson(me).getValue("email").jsonPrimitive.content)
+        assertEquals("ADMIN", bodyJson(me).getValue("role").jsonPrimitive.content)
     }
 
     @Test
     fun `admin-created user logs in with the initial password and changes it via PATCH me`() = withApp("me-change-password") {
         val adminToken = adminToken()
-        val created = postJson(
-            "/api/v1/admin/users",
-            """{"email":"bob@example.com","password":"bob-password-1"}""",
-            token = adminToken,
-        )
-        assertEquals(HttpStatusCode.Created, created.status)
-        assertEquals("USER", bodyJson(created).getValue("role").jsonPrimitive.content)
+        createUser(adminToken, "bob@example.com", "bob-password-1")
 
         val bobToken = loginToken("bob@example.com", "bob-password-1")
         val changed = patchJson("/api/v1/me", """{"newPassword":"bob-new-password-1"}""", token = bobToken)
@@ -206,17 +248,12 @@ class AuthApiTest {
     }
 
     @Test
-    fun `deactivated user cannot log in or use a token, and admin can reactivate and reset the password`() = withApp("deactivate-reset") {
+    fun `deactivated user cannot log in or use a token, and admin reactivates and resets via PATCH`() = withApp("deactivate-reset") {
         val adminToken = adminToken()
-        val created = postJson(
-            "/api/v1/admin/users",
-            """{"email":"bob@example.com","password":"bob-password-1"}""",
-            token = adminToken,
-        )
-        val bobId = bodyJson(created).getValue("id").jsonPrimitive.content
+        val bobId = createUser(adminToken, "bob@example.com", "bob-password-1")
         val bobToken = loginToken("bob@example.com", "bob-password-1")
 
-        val deactivated = postJson("/api/v1/admin/users/$bobId/deactivate", "", token = adminToken)
+        val deactivated = patchJson("/api/v1/admin/users/$bobId", """{"isActive":false}""", adminToken)
         assertEquals(HttpStatusCode.OK, deactivated.status)
         assertFalse(bodyJson(deactivated).getValue("isActive").jsonPrimitive.boolean)
 
@@ -225,28 +262,29 @@ class AuthApiTest {
         val deactivatedMe = patchJson("/api/v1/me", """{"newPassword":"bob-new-password-1"}""", token = bobToken)
         assertEquals(HttpStatusCode.Unauthorized, deactivatedMe.status)
 
-        val reactivated = postJson("/api/v1/admin/users/$bobId/reactivate", "", token = adminToken)
+        val reactivated = patchJson("/api/v1/admin/users/$bobId", """{"isActive":true}""", adminToken)
         assertEquals(HttpStatusCode.OK, reactivated.status)
         assertTrue(bodyJson(reactivated).getValue("isActive").jsonPrimitive.boolean)
         assertEquals(HttpStatusCode.OK, login("bob@example.com", "bob-password-1").status)
 
-        val reset = postJson(
-            "/api/v1/admin/users/$bobId/reset-password",
+        val reset = patchJson(
+            "/api/v1/admin/users/$bobId",
             """{"newPassword":"bob-reset-password-1"}""",
-            token = adminToken,
+            adminToken,
         )
-        assertEquals(HttpStatusCode.NoContent, reset.status)
+        assertEquals(HttpStatusCode.OK, reset.status)
         assertEquals(HttpStatusCode.Unauthorized, login("bob@example.com", "bob-password-1").status)
         assertEquals(HttpStatusCode.OK, login("bob@example.com", "bob-reset-password-1").status)
 
-        val unknownDeactivate = postJson("/api/v1/admin/users/no-such-id/deactivate", "", token = adminToken)
-        assertEquals(HttpStatusCode.NotFound, unknownDeactivate.status)
-        val unknownReset = postJson(
-            "/api/v1/admin/users/no-such-id/reset-password",
-            """{"newPassword":"whatever-123"}""",
-            token = adminToken,
-        )
-        assertEquals(HttpStatusCode.NotFound, unknownReset.status)
+        val emptyPatch = patchJson("/api/v1/admin/users/$bobId", """{}""", adminToken)
+        assertEquals(HttpStatusCode.BadRequest, emptyPatch.status)
+        val shortPassword = patchJson("/api/v1/admin/users/$bobId", """{"newPassword":"short"}""", adminToken)
+        assertEquals(HttpStatusCode.BadRequest, shortPassword.status)
+        assertEquals("password-too-short", errorCode(shortPassword))
+
+        val unknownPatch = patchJson("/api/v1/admin/users/no-such-id", """{"isActive":false}""", adminToken)
+        assertEquals(HttpStatusCode.NotFound, unknownPatch.status)
+        assertEquals("user-not-found", errorCode(unknownPatch))
     }
 
     @Test
@@ -258,5 +296,6 @@ class AuthApiTest {
             token = adminToken,
         )
         assertEquals(HttpStatusCode.Conflict, duplicate.status)
+        assertEquals("email-already-used", errorCode(duplicate))
     }
 }

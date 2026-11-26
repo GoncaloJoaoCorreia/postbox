@@ -19,18 +19,22 @@ fun Route.setupRoutes(users: UserRepository, hasher: PasswordHasher) {
     post("/setup") {
         val req = call.receive<SetupRequest>()
         if (!isValidEmail(req.email)) {
-            call.respond(HttpStatusCode.BadRequest, ErrorResponse("invalid-email"))
+            call.respondError(HttpStatusCode.BadRequest, "invalid-email", "The email address is not valid")
             return@post
         }
         if (req.password.length < MinPasswordLength) {
-            call.respond(HttpStatusCode.BadRequest, ErrorResponse("password-too-short"))
+            call.respondError(
+                HttpStatusCode.BadRequest,
+                "password-too-short",
+                "The password must be at least $MinPasswordLength characters long",
+            )
             return@post
         }
         val admin = withContext(Dispatchers.IO) {
             users.createFirstAdminIfNoUsers(req.email, hasher.hash(req.password), displayNameFor(req.email))
         }
         if (admin == null) {
-            call.respond(HttpStatusCode.Conflict, ErrorResponse("setup-already-completed"))
+            call.respondError(HttpStatusCode.Conflict, "setup-already-completed", "Setup has already been completed")
         } else {
             call.respond(HttpStatusCode.Created, admin.toResponse())
         }

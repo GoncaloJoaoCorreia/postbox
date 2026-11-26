@@ -8,7 +8,12 @@ import com.postbox.carrier.CarrierHttpClients
 import com.postbox.carrier.CarrierId
 import com.postbox.carrier.CarrierRateLimiter
 import com.postbox.carrier.CarrierRegistry
+import com.postbox.db.ParcelRepository
 import com.postbox.db.UserRepository
+import com.postbox.service.DetectionService
+import com.postbox.service.NotImplementedDetectionService
+import com.postbox.service.NotImplementedRefreshService
+import com.postbox.service.RefreshService
 import io.ktor.server.application.Application
 import io.ktor.server.plugins.di.DependencyKey
 import io.ktor.server.plugins.di.dependencies
@@ -32,8 +37,11 @@ fun Application.appDependencies(config: AppConfig, db: Database) {
         provide { config }
         provide { db }
         provide { UserRepository(resolve()) }
+        provide { ParcelRepository(resolve()) }
         provide { PasswordHasher() }
         provide { JwtService(resolve<AppConfig>().jwtSecret) }
+        provide<DetectionService> { NotImplementedDetectionService }
+        provide<RefreshService> { NotImplementedRefreshService }
         provide<CarrierHttpClients> {
             CarrierHttpClients(
                 resolve<AppConfig>().carriers.mapValues { (_, settings) -> settings.toClientSettings() }
