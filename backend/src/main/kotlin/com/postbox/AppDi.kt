@@ -9,6 +9,7 @@ import com.postbox.carrier.CarrierId
 import com.postbox.carrier.CarrierRateLimiter
 import com.postbox.carrier.CarrierRegistry
 import com.postbox.carrier.DhlAdapter
+import com.postbox.carrier.EcoScootingAdapter
 import com.postbox.carrier.PaackAdapter
 import com.postbox.carrier.PostCttAdapter
 import com.postbox.db.ParcelRepository
@@ -99,6 +100,14 @@ fun Application.appDependencies(config: AppConfig, db: Database) {
                 PaackAdapter(
                     client = resolve<CarrierHttpClients>()[CarrierId.PAACK],
                     rateLimiter = config.carriers.getValue(CarrierId.PAACK).toRateLimiter(),
+                )
+            }
+        }
+        if (config.carriers.containsKey(CarrierId.ECOSCOOTING)) {
+            provide<CarrierAdapter>(name = CarrierId.ECOSCOOTING.id) {
+                EcoScootingAdapter(
+                    client = resolve<CarrierHttpClients>()[CarrierId.ECOSCOOTING],
+                    rateLimiter = config.carriers.getValue(CarrierId.ECOSCOOTING).toRateLimiter(),
                 )
             }
         }
