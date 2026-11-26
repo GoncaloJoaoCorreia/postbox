@@ -18,7 +18,10 @@ from the start.
   (`useApi()`, `onUnauthorized()` listener registry), `tokenStorage.ts` (token in localStorage)
 - `src/auth/` — `AuthContext.tsx` (token state, `login`/`logout`; registers `logout` as the
   `onUnauthorized` listener so any `401` drops the token and returns to `/login`)
-- `src/features/` — screens per route area
+- `src/features/` — screens per route area: `auth/` (login, register, first-run setup) and
+  `parcels/` (list screen grouped by status with search, the add-parcel flow with carrier
+  detection progress and manual override, edit/delete on existing parcels, and the inline
+  carrier-metadata prompt)
 
 ## Commands
 
