@@ -8,6 +8,8 @@ import com.postbox.carrier.CarrierRegistry
 import com.postbox.carrier.FakeCarrier
 import com.postbox.db.closeDatabase
 import com.postbox.db.freshTestDatabase
+import com.postbox.service.DetectionService
+import com.postbox.service.RuleBasedDetectionService
 import com.typesafe.config.ConfigFactory
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -95,6 +97,26 @@ class CarrierWiringTest {
                 val response = client.get("/healthz")
                 assertEquals(HttpStatusCode.OK, response.status)
                 assertEquals("""{"status":"ok"}""", response.bodyAsText())
+            } finally {
+                httpClients.close()
+            }
+        } finally {
+            closeDatabase(db)
+        }
+    }
+
+    @Test
+    fun `detection service resolves from DI as the rules-plus-probe implementation`() = testApplication {
+        val db = freshTestDatabase("carrier-wiring-detection")
+        try {
+            application {
+                module(testConfig(), db)
+            }
+            startApplication()
+            val httpClients = application.dependencies.resolve<CarrierHttpClients>()
+            try {
+                val detection = application.dependencies.resolve<DetectionService>()
+                assertTrue(detection is RuleBasedDetectionService)
             } finally {
                 httpClients.close()
             }

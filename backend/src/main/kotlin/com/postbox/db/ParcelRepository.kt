@@ -18,6 +18,7 @@ data class ParcelRecord(
     val userId: String,
     val trackingNumber: String,
     val carrier: String?,
+    val detectionMethod: String?,
     val displayName: String,
     val status: String,
     val carrierMetadata: String?,
@@ -53,6 +54,7 @@ class ParcelRepository(private val db: Database) {
         displayName: String,
         status: String,
         carrier: String? = null,
+        detectionMethod: String? = null,
         carrierMetadata: String? = null,
         lastCheckedAt: String? = null,
     ): ParcelRecord = dbQuery(db) {
@@ -63,6 +65,7 @@ class ParcelRepository(private val db: Database) {
             it[Parcels.userId] = userId
             it[Parcels.trackingNumber] = trackingNumber
             it[Parcels.carrier] = carrier
+            it[Parcels.detectionMethod] = detectionMethod
             it[Parcels.displayName] = displayName
             it[Parcels.status] = status
             it[Parcels.carrierMetadata] = carrierMetadata
@@ -74,6 +77,7 @@ class ParcelRepository(private val db: Database) {
             userId = userId,
             trackingNumber = trackingNumber,
             carrier = carrier,
+            detectionMethod = detectionMethod,
             displayName = displayName,
             status = status,
             carrierMetadata = carrierMetadata,
@@ -101,6 +105,7 @@ class ParcelRepository(private val db: Database) {
         displayName: String,
         status: String,
         carrier: String?,
+        detectionMethod: String?,
         carrierMetadata: String?,
         lastCheckedAt: String?,
         archivedAt: String?,
@@ -109,6 +114,7 @@ class ParcelRepository(private val db: Database) {
             it[Parcels.displayName] = displayName
             it[Parcels.status] = status
             it[Parcels.carrier] = carrier
+            it[Parcels.detectionMethod] = detectionMethod
             it[Parcels.carrierMetadata] = carrierMetadata
             it[Parcels.lastCheckedAt] = lastCheckedAt
             it[Parcels.archivedAt] = archivedAt
@@ -198,6 +204,7 @@ class ParcelRepository(private val db: Database) {
         userId = row[Parcels.userId],
         trackingNumber = row[Parcels.trackingNumber],
         carrier = row[Parcels.carrier],
+        detectionMethod = row[Parcels.detectionMethod],
         displayName = row[Parcels.displayName],
         status = row[Parcels.status],
         carrierMetadata = row[Parcels.carrierMetadata],

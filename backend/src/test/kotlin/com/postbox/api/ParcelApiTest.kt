@@ -176,6 +176,7 @@ class ParcelApiTest {
         assertEquals("UNKNOWN", parcel.getValue("status").jsonPrimitive.content)
         assertEquals("1Z999AA10123456784", parcel.getValue("displayName").jsonPrimitive.content)
         assertEquals("dhl", parcel.getValue("carrier").jsonPrimitive.content)
+        assertEquals("override", parcel.getValue("detectionMethod").jsonPrimitive.content)
         assertEquals("express", parcel.getValue("metadata").jsonObject.getValue("service").jsonPrimitive.content)
         assertTrue(parcel["archivedAt"] == JsonNull)
         assertTrue(parcel["latestEvent"] == JsonNull)
@@ -234,6 +235,7 @@ class ParcelApiTest {
         val reCarrier = patchJson("/api/v1/parcels/$id", """{"carrier":"ctt","metadata":{"postcode":"1000-001"}}""", token)
         assertEquals(HttpStatusCode.OK, reCarrier.status)
         assertEquals("ctt", bodyJson(reCarrier).getValue("carrier").jsonPrimitive.content)
+        assertEquals("override", bodyJson(reCarrier).getValue("detectionMethod").jsonPrimitive.content)
         assertEquals("1000-001", bodyJson(reCarrier).getValue("metadata").jsonObject.getValue("postcode").jsonPrimitive.content)
 
         val badCarrier = patchJson("/api/v1/parcels/$id", """{"carrier":"ups"}""", token)
@@ -297,16 +299,24 @@ class ParcelApiTest {
     }
 
     @Test
-    fun `detect responds 501 not_implemented until the detection service lands`() = withApp("detect-501") { _ ->
+    fun `detect resolves by format rules and keeps the top candidate provisionally without adapters`() = withApp("detect-rule") { _ ->
         val token = adminToken()
 
         val response = postJson("/api/v1/parcels/detect", """{"trackingNumber":"1Z999AA10123456784"}""", token)
-        assertEquals(HttpStatusCode.NotImplemented, response.status)
-        assertEquals("not_implemented", errorCode(response))
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = bodyJson(response)
+        assertEquals("1Z999AA10123456784", body.getValue("trackingNumber").jsonPrimitive.content)
+        assertEquals("paack", body.getValue("carrier").jsonPrimitive.content)
+        assertEquals("rule", body.getValue("method").jsonPrimitive.content)
+        assertEquals(listOf("paack"), body.getValue("candidates").jsonArray.map { it.jsonPrimitive.content })
 
         val invalid = postJson("/api/v1/parcels/detect", """{"trackingNumber":"no!"}""", token)
         assertEquals(HttpStatusCode.BadRequest, invalid.status)
         assertEquals("invalid-tracking-number", errorCode(invalid))
+
+        val badCarrier = postJson("/api/v1/parcels/detect", """{"trackingNumber":"1Z999AA10123456784","carrier":"ups"}""", token)
+        assertEquals(HttpStatusCode.BadRequest, badCarrier.status)
+        assertEquals("invalid-carrier", errorCode(badCarrier))
     }
 
     @Test
