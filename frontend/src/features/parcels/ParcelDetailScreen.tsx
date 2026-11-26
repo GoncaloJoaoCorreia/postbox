@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiError } from "../../api/client";
+import { TopNav } from "../../app/TopNav";
 import { UserMenu } from "../../app/UserMenu";
 import { carrierLabel, carrierTrackingUrl } from "./carriers";
 import { ExternalLinkIcon } from "./icons";
@@ -38,6 +39,7 @@ export function ParcelDetailScreen() {
           <span className="brand-mark" aria-hidden="true" />
           Postbox
         </Link>
+        <TopNav />
         <UserMenu />
       </header>
       <div className="app-body">
