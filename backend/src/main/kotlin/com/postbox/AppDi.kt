@@ -9,6 +9,7 @@ import com.postbox.carrier.CarrierId
 import com.postbox.carrier.CarrierRateLimiter
 import com.postbox.carrier.CarrierRegistry
 import com.postbox.carrier.DhlAdapter
+import com.postbox.carrier.PostCttAdapter
 import com.postbox.db.ParcelRepository
 import com.postbox.db.UserRepository
 import com.postbox.service.DefaultRefreshService
@@ -83,6 +84,14 @@ fun Application.appDependencies(config: AppConfig, db: Database) {
             }
         } else {
             log.warn("DHL_API_KEY is not set — the DHL carrier adapter is disabled")
+        }
+        if (config.carriers.containsKey(CarrierId.CTT)) {
+            provide<CarrierAdapter>(name = CarrierId.CTT.id) {
+                PostCttAdapter(
+                    client = resolve<CarrierHttpClients>()[CarrierId.CTT],
+                    rateLimiter = config.carriers.getValue(CarrierId.CTT).toRateLimiter(),
+                )
+            }
         }
     }
 }
