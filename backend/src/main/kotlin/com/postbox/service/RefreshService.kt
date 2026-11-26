@@ -2,9 +2,11 @@ package com.postbox.service
 
 import com.postbox.RefreshSettings
 import com.postbox.carrier.CarrierAdapter
+import com.postbox.carrier.CarrierError
 import com.postbox.carrier.CarrierId
 import com.postbox.carrier.CarrierRateLimiter
 import com.postbox.carrier.CarrierRegistry
+import com.postbox.carrier.MetadataField
 import com.postbox.carrier.TrackingEvent
 import com.postbox.carrier.TrackingResult
 import com.postbox.carrier.TrackingStatus
@@ -36,18 +38,34 @@ import kotlin.time.Instant
  * On-demand refresh: [refreshStale] refreshes the stale parcels of a list before
  * the app-open response is returned, and [refresh] forces one parcel regardless of
  * staleness. A carrier failure never fails the call — cached data stays and the
- * parcel is marked with a soft `lastCheckError` indicator.
+ * parcel is marked with a soft `lastCheckError` indicator. A [CarrierError.NeedsMetadata]
+ * from the resolved carrier is not an outage either: [refresh] rethrows it and
+ * [refreshStale] reports the missing fields on the outcome, so the caller can ask
+ * the user for exactly those fields.
  */
 interface RefreshService {
-    /** Forces a refresh of one own parcel, regardless of TTL or final-state grace. */
+    /**
+     * Forces a refresh of one own parcel, regardless of TTL or final-state grace.
+     *
+     * @throws ParcelNotFound when the parcel does not exist (or belongs to another user).
+     * @throws CarrierError.NeedsMetadata when the resolved carrier requires fields the parcel lacks.
+     */
     suspend fun refresh(userId: String, parcelId: String): ParcelRecord
 
     /**
      * Refreshes the stale parcels in [owned] (TTL and final-state grace apply) and
      * returns the full list with the refreshed records in place, order preserved.
+     * A parcel whose carrier needs missing metadata comes back unchanged with the
+     * missing fields on [RefreshOutcome.missingMetadata].
      */
-    suspend fun refreshStale(owned: List<ParcelRecord>): List<ParcelRecord>
+    suspend fun refreshStale(owned: List<ParcelRecord>): List<RefreshOutcome>
 }
+
+/** One parcel after a list refresh: the (possibly refreshed) record plus any metadata the carrier still requires. */
+data class RefreshOutcome(
+    val parcel: ParcelRecord,
+    val missingMetadata: List<MetadataField> = emptyList(),
+)
 
 /** Thrown when [RefreshService.refresh] is called for a parcel that does not exist (or belongs to another user). */
 class ParcelNotFound(val parcelId: String) : Exception("No parcel with this id exists")
@@ -64,7 +82,9 @@ class ParcelNotFound(val parcelId: String) : Exception("No parcel with this id e
  * respected, and every probe is bounded by the carrier's configured request timeout, so
  * one hanging carrier delays nothing beyond its own timeout. A failed probe (error or
  * timeout) leaves the cached data untouched and marks the parcel with a soft
- * "carrier unreachable, data from {time}" indicator.
+ * "carrier unreachable, data from {time}" indicator. A [CarrierError.NeedsMetadata] probe
+ * is not a failure: it is not counted as a check (lastCheckedAt and lastCheckError stay
+ * untouched) and the missing fields are reported to the caller instead.
  */
 class DefaultRefreshService(
     private val parcels: ParcelRepository,
@@ -86,11 +106,18 @@ class DefaultRefreshService(
         return refreshParcel(parcel)
     }
 
-    override suspend fun refreshStale(owned: List<ParcelRecord>): List<ParcelRecord> {
+    override suspend fun refreshStale(owned: List<ParcelRecord>): List<RefreshOutcome> {
         val now = clock.now()
         return coroutineScope {
             owned.map { parcel ->
-                async { if (isStale(parcel, now)) refreshParcel(parcel) else parcel }
+                async {
+                    if (!isStale(parcel, now)) return@async RefreshOutcome(parcel)
+                    try {
+                        RefreshOutcome(refreshParcel(parcel))
+                    } catch (e: CarrierError.NeedsMetadata) {
+                        RefreshOutcome(parcel, missingMetadata = e.fields)
+                    }
+                }
             }.awaitAll()
         }
     }
@@ -136,6 +163,8 @@ class DefaultRefreshService(
                 withTimeoutOrNull(timeout) { adapter.track(parcel.trackingNumber, metadata) }
             }
         } catch (e: CancellationException) {
+            throw e
+        } catch (e: CarrierError.NeedsMetadata) {
             throw e
         } catch (e: Exception) {
             log.warn("Carrier '{}' probe for parcel {} failed: {}", carrier.id, parcel.id, e.message)

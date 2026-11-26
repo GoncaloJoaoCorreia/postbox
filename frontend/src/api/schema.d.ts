@@ -283,6 +283,8 @@ export interface components {
             code: string;
             /** @example No parcel with this id exists */
             message: string;
+            /** @description Present only on `missing-carrier-metadata` — the fields the resolved carrier requires */
+            fields?: components["schemas"]["MetadataField"][];
         };
         SetupStatusResponse: {
             /** @description true while the database has no users */
@@ -343,6 +345,22 @@ export interface components {
         Metadata: {
             [key: string]: string;
         };
+        MetadataField: {
+            /**
+             * @description The metadata key to send back in `metadata`
+             * @example postcode
+             */
+            name: string;
+            /** @example Recipient postcode */
+            label: string;
+            /** @example The 4 digits of your postcode */
+            hint: string;
+            /**
+             * @description Optional pattern a provided value must fully match, else the field counts as missing
+             * @example \d{4}
+             */
+            validationRegex?: string | null;
+        };
         CreateParcelRequest: {
             /** @description Trimmed, then length-capped and charset-checked server-side */
             trackingNumber: string;
@@ -379,6 +397,12 @@ export interface components {
             displayName: string;
             status: components["schemas"]["TrackingStatus"];
             metadata?: components["schemas"]["Metadata"] | null;
+            /**
+             * @description Fields the resolved carrier still requires (from the last refresh's
+             *     `NeedsMetadata`); the client prompts for exactly these. Null when nothing
+             *     is missing.
+             */
+            missingMetadata?: components["schemas"]["MetadataField"][] | null;
             /** Format: date-time */
             lastCheckedAt?: string | null;
             /**
@@ -937,6 +961,31 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            /** @description The resolved carrier requires metadata the parcel does not have yet; `error.fields` lists exactly what to prompt for */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "missing-carrier-metadata",
+                     *         "message": "The carrier requires additional metadata: postcode",
+                     *         "fields": [
+                     *           {
+                     *             "name": "postcode",
+                     *             "label": "Recipient postcode",
+                     *             "hint": "The 4 digits of your postcode",
+                     *             "validationRegex": "\\d{4}"
+                     *           }
+                     *         ]
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
 }

@@ -230,6 +230,9 @@ paths:
         parcels skip refresh once a grace window (default 3 days) has passed since their
         last check. A carrier outage never fails the list: cached data is served and the
         parcel carries a soft `lastCheckError` indicator (`carrier unreachable, data from ...`).
+        A parcel whose resolved carrier requires metadata it does not have yet is served with
+        cached data plus a structured `missingMetadata` field list (the user is prompted for
+        exactly those fields) — it never fails the list either.
       responses:
         '200':
           description: The caller's parcels
@@ -383,7 +386,11 @@ paths:
         Forces a refresh regardless of the TTL: new events are inserted (deduplicated by
         the idempotency index), the status is recalculated and `lastCheckedAt` updated.
         If the carrier is unavailable, cached data stays and the parcel is marked with a
-        soft `lastCheckError` indicator instead of failing.
+        soft `lastCheckError` indicator instead of failing. If the resolved carrier
+        requires metadata the parcel does not have, the refresh answers `409` with
+        `error.code: missing-carrier-metadata` and the structured `error.fields` list —
+        prompt for exactly those fields; adding them via `PATCH metadata` makes the next
+        refresh succeed.
       parameters:
         - $ref: '#/components/parameters/ParcelId'
       responses:
@@ -397,6 +404,21 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          description: The resolved carrier requires metadata the parcel does not have yet; `error.fields` lists exactly what to prompt for
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: missing-carrier-metadata
+                  message: 'The carrier requires additional metadata: postcode'
+                  fields:
+                    - name: postcode
+                      label: Recipient postcode
+                      hint: The 4 digits of your postcode
+                      validationRegex: \d{4}
 components:
   securitySchemes:
     bearerAuth:
@@ -493,6 +515,11 @@ components:
         message:
           type: string
           example: No parcel with this id exists
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetadataField'
+          description: Present only on `missing-carrier-metadata` — the fields the resolved carrier requires
     SetupStatusResponse:
       type: object
       required: [setupPending]
@@ -593,6 +620,25 @@ components:
       additionalProperties:
         type: string
       description: Carrier-specific fields (e.g. a postcode), stored per parcel
+    MetadataField:
+      type: object
+      required: [name, label, hint]
+      properties:
+        name:
+          type: string
+          description: The metadata key to send back in `metadata`
+          example: postcode
+        label:
+          type: string
+          example: Recipient postcode
+        hint:
+          type: string
+          example: The 4 digits of your postcode
+        validationRegex:
+          type: string
+          nullable: true
+          description: Optional pattern a provided value must fully match, else the field counts as missing
+          example: \d{4}
     CreateParcelRequest:
       type: object
       required: [trackingNumber]
@@ -667,6 +713,15 @@ components:
           allOf:
             - $ref: '#/components/schemas/Metadata'
           nullable: true
+        missingMetadata:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetadataField'
+          nullable: true
+          description: |
+            Fields the resolved carrier still requires (from the last refresh's
+            `NeedsMetadata`); the client prompts for exactly these. Null when nothing
+            is missing.
         lastCheckedAt:
           type: string
           format: date-time

@@ -17,6 +17,7 @@ import com.postbox.db.isoUtc
 import com.postbox.module
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -133,6 +134,13 @@ class RefreshApiTest {
     private suspend fun ApplicationTestBuilder.getJson(path: String, token: String): HttpResponse =
         client.get(path) { bearerAuth(token) }
 
+    private suspend fun ApplicationTestBuilder.patchJson(path: String, body: String, token: String): HttpResponse =
+        client.patch(path) {
+            contentType(ContentType.Application.Json)
+            setBody(body)
+            bearerAuth(token)
+        }
+
     private suspend fun ApplicationTestBuilder.adminToken(): String {
         assertEquals(
             HttpStatusCode.Created,
@@ -162,6 +170,7 @@ class RefreshApiTest {
     private val dhlNumber = "1234567890"
     private val cttNumber = "DD506882333PT"
     private val paackNumber = "534000021268935007"
+    private val postnlNumber = "3SPOSTNL00123456"
 
     @Test
     fun `listing parcels refreshes stale ones on open and repeated opens within the TTL trigger no carrier traffic`() {
@@ -313,6 +322,62 @@ class RefreshApiTest {
             assertEquals(listOf(dhlNumber), dhl.calls, "within the grace window a stale DELIVERED parcel is still refreshed")
             val parcel = bodyJsonArray(list)[0].jsonObject
             assertEquals(FakeCarrier.deterministicResult(dhlNumber).status.name, parcel.getValue("status").jsonPrimitive.content)
+        }
+    }
+
+    @Test
+    fun `a parcel whose carrier requires metadata gets a structured missing-metadata response on refresh until the key is added`() {
+        val postcode = MetadataField("postcode", "Recipient postcode", "The 4 digits of your postcode", "\\d{4}")
+        val postnl = FakeCarrier(
+            CarrierId.POSTNL,
+            requiredMetadata = mapOf("postcode" to postcode),
+            results = mapOf(postnlNumber to FakeCarrier.deterministicResult(postnlNumber)),
+        )
+        withApp("refresh-needs-metadata", mapOf(CarrierId.POSTNL to postnl)) { _ ->
+            val token = adminToken()
+            val id = createParcelWithCarrier(token, postnlNumber, "postnl")
+
+            val list = getJson("/api/v1/parcels", token)
+            assertEquals(HttpStatusCode.OK, list.status)
+            val listed = bodyJsonArray(list)[0].jsonObject
+            assertEquals("UNKNOWN", listed.getValue("status").jsonPrimitive.content, "cached data stays while metadata is missing")
+            assertTrue(listed["lastCheckError"] == JsonNull, "missing metadata is not an outage")
+            assertTrue(listed["lastCheckedAt"] == JsonNull, "a missing-metadata probe is not a check")
+            val missing = listed.getValue("missingMetadata").jsonArray
+            assertEquals(1, missing.size)
+            val missingField = missing[0].jsonObject
+            assertEquals("postcode", missingField.getValue("name").jsonPrimitive.content)
+            assertEquals("Recipient postcode", missingField.getValue("label").jsonPrimitive.content)
+            assertEquals("The 4 digits of your postcode", missingField.getValue("hint").jsonPrimitive.content)
+            assertEquals("\\d{4}", missingField.getValue("validationRegex").jsonPrimitive.content)
+
+            val refresh = postJson("/api/v1/parcels/$id/refresh", "", token)
+            assertEquals(HttpStatusCode.Conflict, refresh.status)
+            val error = bodyJson(refresh).getValue("error").jsonObject
+            assertEquals("missing-carrier-metadata", error.getValue("code").jsonPrimitive.content)
+            val fields = error.getValue("fields").jsonArray
+            assertEquals(1, fields.size)
+            assertEquals("postcode", fields[0].jsonObject.getValue("name").jsonPrimitive.content)
+            assertEquals("\\d{4}", fields[0].jsonObject.getValue("validationRegex").jsonPrimitive.content)
+
+            val invalid = patchJson("/api/v1/parcels/$id", """{"metadata":{"postcode":"abc"}}""", token)
+            assertEquals(HttpStatusCode.OK, invalid.status)
+            val stillMissing = postJson("/api/v1/parcels/$id/refresh", "", token)
+            assertEquals(HttpStatusCode.Conflict, stillMissing.status, "a value failing validationRegex is still missing metadata")
+
+            val valid = patchJson("/api/v1/parcels/$id", """{"metadata":{"postcode":"1234"}}""", token)
+            assertEquals(HttpStatusCode.OK, valid.status)
+            val expected = FakeCarrier.deterministicResult(postnlNumber)
+            val ok = postJson("/api/v1/parcels/$id/refresh", "", token)
+            assertEquals(HttpStatusCode.OK, ok.status)
+            val body = bodyJson(ok)
+            assertEquals(expected.status.name, body.getValue("status").jsonPrimitive.content)
+            assertTrue(body["lastCheckError"] == JsonNull)
+            assertNotNull(body["lastCheckedAt"])
+            assertTrue(body["latestEvent"] != JsonNull)
+
+            val after = bodyJsonArray(getJson("/api/v1/parcels", token))[0].jsonObject
+            assertTrue(after["missingMetadata"] == JsonNull, "once the metadata is present the list no longer reports missing fields")
         }
     }
 

@@ -2,6 +2,7 @@ package com.postbox.service
 
 import com.postbox.RefreshSettings
 import com.postbox.carrier.CarrierAdapter
+import com.postbox.carrier.CarrierError
 import com.postbox.carrier.CarrierId
 import com.postbox.carrier.CarrierRegistry
 import com.postbox.carrier.FakeCarrier
@@ -14,6 +15,9 @@ import com.postbox.db.freshTestDatabase
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
@@ -67,7 +71,7 @@ class RefreshServiceTest {
             val refreshed = service.refreshStale(owned)
 
             assertEquals(6, refreshed.size)
-            assertTrue(refreshed.all { it.lastCheckedAt != null }, "every stale parcel must be refreshed")
+            assertTrue(refreshed.all { it.parcel.lastCheckedAt != null }, "every stale parcel must be refreshed")
             assertEquals(6, adapter.calls.get())
             assertTrue(
                 adapter.maxInFlight.get() <= 4,
@@ -77,7 +81,65 @@ class RefreshServiceTest {
                 adapter.maxInFlight.get() > 1,
                 "probes should still run concurrently, got ${adapter.maxInFlight.get()}",
             )
-            assertTrue(refreshed.all { it.lastCheckError == null }, "successful refreshes clear the soft error indicator")
+            assertTrue(refreshed.all { it.parcel.lastCheckError == null }, "successful refreshes clear the soft error indicator")
+            assertTrue(refreshed.all { it.missingMetadata.isEmpty() })
+        } finally {
+            closeDatabase(db)
+        }
+    }
+
+    @Test
+    fun `a carrier needing missing metadata surfaces the fields without counting a check, and refresh succeeds once the metadata is present`() = runTest {
+        val db = freshTestDatabase("refresh-needs-metadata")
+        try {
+            val users = UserRepository(db)
+            val parcels = ParcelRepository(db)
+            val user = users.create("alice@example.com", "hash-1", displayName = "Alice")
+            val field = MetadataField("postcode", "Recipient postcode", "The 4 digits of your postcode", "\\d{4}")
+            val number = "3SPOSTNL00123456"
+            val adapter = FakeCarrier(
+                CarrierId.POSTNL,
+                requiredMetadata = mapOf("postcode" to field),
+                results = mapOf(number to FakeCarrier.deterministicResult(number)),
+            )
+            val service = DefaultRefreshService(
+                parcels = parcels,
+                registry = CarrierRegistry(mapOf(CarrierId.POSTNL to adapter)),
+                rateLimiters = emptyMap(),
+                settings = RefreshSettings(
+                    staleAfter = 30.minutes,
+                    maxConcurrentProbes = 4,
+                    deliveredGrace = 3.days,
+                ),
+                probeTimeouts = mapOf(CarrierId.POSTNL to 10.seconds),
+            )
+            val parcel = parcels.createParcel(user.id, number, "P", "UNKNOWN", carrier = "postnl")
+
+            val outcomes = service.refreshStale(listOf(parcel))
+            assertEquals(1, outcomes.size)
+            assertEquals(listOf(field), outcomes[0].missingMetadata)
+            assertNull(outcomes[0].parcel.lastCheckedAt, "a missing-metadata probe is not a check")
+            assertNull(outcomes[0].parcel.lastCheckError, "missing metadata is not an outage")
+
+            val error = assertFailsWith<CarrierError.NeedsMetadata> { service.refresh(user.id, parcel.id) }
+            assertEquals(listOf(field), error.fields)
+
+            parcels.updateParcelForUser(
+                userId = user.id,
+                parcelId = parcel.id,
+                displayName = "P",
+                status = "UNKNOWN",
+                carrier = "postnl",
+                detectionMethod = "override",
+                carrierMetadata = """{"postcode":"1234"}""",
+                lastCheckedAt = null,
+                archivedAt = null,
+                lastCheckError = null,
+            )
+            val refreshed = service.refresh(user.id, parcel.id)
+            assertEquals(FakeCarrier.deterministicResult(number).status.name, refreshed.status)
+            assertNotNull(refreshed.lastCheckedAt)
+            assertNull(refreshed.lastCheckError)
         } finally {
             closeDatabase(db)
         }
