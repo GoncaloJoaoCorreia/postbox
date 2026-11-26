@@ -7,13 +7,17 @@ from the start.
 
 - `src/main.tsx` — composition root: `<AppProviders>` (TanStack Query + API client +
   auth, plus the router) around `<AppRoutes>`
-- `src/app/` — routes and the `RequireAuth` guard (unauthenticated users redirect to
-  `/login`); three areas: `/login` + `/register`, `/parcels`, `/parcels/:id`
+- `src/app/` — routes, the `SetupGate` (while `GET /api/v1/setup/status` reports
+  `setupPending`, every route redirects to the `/setup` first-run wizard, which is
+  unreachable once an admin exists) and the `RequireAuth` guard (unauthenticated users
+  redirect to `/login`); areas: `/setup`, `/login` + `/register`, `/parcels`, `/parcels/:id`
 - `src/api/` — `schema.d.ts` (generated from `../docs/openapi.yaml` via
-  `openapi-typescript`), `client.ts` (`createApiClient({ baseUrl, getToken })`: bearer
-  injection + typed `{"error": {"code", "message"}}` envelope handling → `ApiError`),
-  `ApiContext.tsx` (`useApi()`), `tokenStorage.ts` (token in localStorage)
-- `src/auth/` — `AuthContext.tsx` (token state, `login`/`logout`)
+  `openapi-typescript`), `client.ts` (`createApiClient({ baseUrl, getToken, onUnauthorized })`:
+  bearer injection + typed `{"error": {"code", "message"}}` envelope handling → `ApiError`,
+  and a `401` from any non-login route fires `onUnauthorized`), `ApiContext.tsx`
+  (`useApi()`, `onUnauthorized()` listener registry), `tokenStorage.ts` (token in localStorage)
+- `src/auth/` — `AuthContext.tsx` (token state, `login`/`logout`; registers `logout` as the
+  `onUnauthorized` listener so any `401` drops the token and returns to `/login`)
 - `src/features/` — screens per route area
 
 ## Commands

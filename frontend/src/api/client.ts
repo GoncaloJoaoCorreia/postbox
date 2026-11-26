@@ -24,11 +24,12 @@ export class ApiError extends Error {
 export interface ApiClientOptions {
   baseUrl: string;
   getToken: () => string | null;
+  onUnauthorized?: () => void;
 }
 
 export type ApiClient = ReturnType<typeof createApiClient>;
 
-export function createApiClient({ baseUrl, getToken }: ApiClientOptions) {
+export function createApiClient({ baseUrl, getToken, onUnauthorized }: ApiClientOptions) {
   async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = { Accept: "application/json" };
     if (body !== undefined) headers["Content-Type"] = "application/json";
@@ -39,7 +40,11 @@ export function createApiClient({ baseUrl, getToken }: ApiClientOptions) {
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-    if (!response.ok) throw await toApiError(response);
+    if (!response.ok) {
+      const error = await toApiError(response);
+      if (error.status === 401 && path !== "/api/v1/auth/login") onUnauthorized?.();
+      throw error;
+    }
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
   }
@@ -50,6 +55,8 @@ export function createApiClient({ baseUrl, getToken }: ApiClientOptions) {
     patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
     delete: <T>(path: string) => request<T>("DELETE", path),
     getSetupStatus: () => request<SetupStatusResponse>("GET", "/api/v1/setup/status"),
+    createFirstAdmin: (email: string, password: string) =>
+      request<User>("POST", "/api/v1/setup", { email, password }),
     login: (email: string, password: string) =>
       request<LoginResponse>("POST", "/api/v1/auth/login", { email, password }),
     getMe: () => request<User>("GET", "/api/v1/me"),

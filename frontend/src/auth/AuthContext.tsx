@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
-import { useApi } from "../api/ApiContext";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { onUnauthorized, useApi } from "../api/ApiContext";
 import { clearStoredToken, getStoredToken, storeToken } from "../api/tokenStorage";
 
 interface AuthContextValue {
@@ -27,6 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearStoredToken();
     setToken(null);
   }, []);
+
+  useEffect(() => onUnauthorized(logout), [logout]);
 
   return <AuthContext.Provider value={{ token, login, logout }}>{children}</AuthContext.Provider>;
 }
