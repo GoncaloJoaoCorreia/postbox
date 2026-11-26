@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 class AutoMigrateTest {
 
     @Test
-    fun `fresh database file is migrated to V1 automatically on init`() {
+    fun `fresh database file is migrated automatically on init`() {
         val db = freshTestDatabase("automigrate")
         try {
             val versions = dbQuery(db) {
@@ -20,7 +20,7 @@ class AutoMigrateTest {
                     buildList { while (rs.next()) add(rs.getInt(1)) }
                 } ?: emptyList()
             }
-            assertEquals(listOf(1), versions)
+            assertEquals(listOf(1, 2), versions)
             val tables = dbQuery(db) {
                 exec("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name") { rs ->
                     buildList { while (rs.next()) add(rs.getString(1)) }
@@ -36,6 +36,12 @@ class AutoMigrateTest {
                 listOf("created_at", "display_name", "email", "id", "is_active", "password_hash", "role"),
                 userColumns,
             )
+            val parcelColumns = dbQuery(db) {
+                exec("SELECT name FROM pragma_table_info('parcels') ORDER BY name") { rs ->
+                    buildList { while (rs.next()) add(rs.getString(1)) }
+                } ?: emptyList()
+            }
+            assertTrue("detection_method" in parcelColumns, "V2 must add parcels.detection_method, got: $parcelColumns")
             // applied_at must be fixed-width ISO-8601 UTC text so plain TEXT ordering stays chronological
             val appliedAt = dbQuery(db) {
                 exec("SELECT applied_at FROM schema_version WHERE version = 1") { rs ->
@@ -62,7 +68,7 @@ class AutoMigrateTest {
                     buildList { while (rs.next()) add(rs.getInt(1)) }
                 } ?: emptyList()
             }
-            assertEquals(listOf(1), versions, "V1 must be applied exactly once; a re-run must not re-apply it")
+            assertEquals(listOf(1, 2), versions, "each migration must be applied exactly once; a re-run must not re-apply it")
         } finally {
             closeDatabase(first)
             closeDatabase(second)
@@ -85,7 +91,7 @@ class AutoMigrateTest {
                     buildList { while (rs.next()) add(rs.getInt(1)) }
                 } ?: emptyList()
             }
-            assertEquals(listOf(1), versions, "a failed migration must not be recorded in schema_version")
+            assertEquals(listOf(1, 2), versions, "a failed migration must not be recorded in schema_version")
             val doomed = dbQuery(db) {
                 exec("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'doomed'") { rs ->
                     buildList { while (rs.next()) add(rs.getString(1)) }

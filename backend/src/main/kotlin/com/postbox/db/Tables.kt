@@ -24,6 +24,7 @@ object Parcels : Table("parcels") {
     val userId = text("user_id").references(Users.id)
     val trackingNumber = text("tracking_number")
     val carrier = text("carrier").nullable()
+    val detectionMethod = text("detection_method").nullable()
     val displayName = text("display_name")
     val status = text("status")
     val carrierMetadata = text("carrier_metadata").nullable()

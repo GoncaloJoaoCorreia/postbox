@@ -26,10 +26,12 @@ class ParcelRepositoryTest {
                 displayName = "Shoes",
                 status = "IN_TRANSIT",
                 carrier = "UPS",
+                detectionMethod = "override",
                 carrierMetadata = """{"service":"ground"}""",
                 lastCheckedAt = "2026-11-22T08:00:00.000Z",
             )
             assertEquals(created, parcels.findParcelForUser(user.id, created.id))
+            assertEquals("override", created.detectionMethod)
             assertEquals(listOf(created), parcels.listParcelsForUser(user.id))
 
             val event = parcels.addEventForUser(
@@ -57,12 +59,13 @@ class ParcelRepositoryTest {
             assertEquals(
                 1,
                 parcels.updateParcelForUser(
-                    user.id, created.id, "Shoes EU", "DELIVERED", "UPS", null, "2026-11-23T09:00:00.000Z", "2026-11-23T09:30:00.000Z",
+                    user.id, created.id, "Shoes EU", "DELIVERED", "UPS", "probe", null, "2026-11-23T09:00:00.000Z", "2026-11-23T09:30:00.000Z",
                 ),
             )
             val updated = parcels.findParcelForUser(user.id, created.id)
             assertEquals("DELIVERED", updated?.status)
             assertEquals("Shoes EU", updated?.displayName)
+            assertEquals("probe", updated?.detectionMethod)
             assertEquals(null, updated?.carrierMetadata)
             assertEquals("2026-11-23T09:30:00.000Z", updated?.archivedAt)
             assertEquals(1, parcels.deleteParcelForUser(user.id, created.id))
@@ -89,7 +92,7 @@ class ParcelRepositoryTest {
             assertNull(
                 parcels.addEventForUser(bob.id, parcel.id, "2026-11-21T10:00:00.000Z", "OUT_FOR_DELIVERY", "fake", null, "raw-b"),
             )
-            assertEquals(0, parcels.updateParcelForUser(bob.id, parcel.id, "Hacked", "DELIVERED", null, null, null, null))
+            assertEquals(0, parcels.updateParcelForUser(bob.id, parcel.id, "Hacked", "DELIVERED", null, null, null, null, null))
             assertEquals(0, parcels.deleteParcelForUser(bob.id, parcel.id))
 
             val reloaded = parcels.findParcelForUser(alice.id, parcel.id)

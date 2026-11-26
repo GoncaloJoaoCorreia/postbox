@@ -9,8 +9,8 @@ info:
     Authentication is bearer-token based everywhere except first-run setup and login:
     `Authorization: Bearer <token>` with a HS256 JWT. All error responses share one
     envelope: `{"error": {"code": "...", "message": "..."}}` — including 401 for
-    missing/invalid tokens and the temporary `501 not_implemented` on the two
-    deferred endpoints (`POST /api/v1/parcels/detect`, `POST /api/v1/parcels/{id}/refresh`).
+    missing/invalid tokens and the temporary `501 not_implemented` on the deferred
+    refresh endpoint (`POST /api/v1/parcels/{id}/refresh`).
 
     Parcel ids of other users return 404 (never 403) so ids cannot be enumerated.
 servers:
@@ -241,6 +241,12 @@ paths:
       tags: [parcels]
       operationId: createParcel
       summary: Add a tracking number
+      description: |
+        Without `carrier`, the detection engine resolves the carrier (format rules produce a
+        ranked candidate list, candidates are probed in parallel, first carrier with real
+        tracking data wins) and the outcome is stored on the parcel (`carrier` +
+        `detectionMethod`). An explicit `carrier` is a manual override (`detectionMethod`
+        `override`) and is never probed away.
       requestBody:
         required: true
         content:
@@ -264,8 +270,13 @@ paths:
       operationId: detectCarrier
       summary: Resolve which carrier a tracking number belongs to
       description: |
-        Wired but not implemented yet — responds `501 not_implemented` until the
-        detection engine lands.
+        Format rules per carrier produce a ranked candidate list; all candidates with a
+        registered adapter are probed concurrently (paced by per-carrier rate limiters) and
+        the first carrier returning real tracking data wins (`method: probe`). A carrier
+        answering not-found eliminates itself. An explicit `carrier` always wins
+        (`method: override`) and is never probed. When no carrier knows the number yet, the
+        top-ranked candidate is returned provisionally (`method: rule`) and re-probed on
+        later refreshes.
       requestBody:
         required: true
         content:
@@ -283,8 +294,6 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
   /api/v1/parcels/{id}:
     get:
       tags: [parcels]
@@ -651,6 +660,11 @@ components:
           allOf:
             - $ref: '#/components/schemas/Carrier'
           nullable: true
+        detectionMethod:
+          allOf:
+            - $ref: '#/components/schemas/DetectionMethod'
+          nullable: true
+          description: How the carrier was resolved (auto-detected, or manual override)
         displayName:
           type: string
         status:

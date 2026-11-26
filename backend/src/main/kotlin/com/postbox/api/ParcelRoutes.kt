@@ -5,9 +5,12 @@ import com.postbox.carrier.CarrierId
 import com.postbox.db.ParcelRecord
 import com.postbox.db.ParcelRepository
 import com.postbox.db.nowIso
+import com.postbox.service.DetectionMethod
+import com.postbox.service.DetectionResult
 import com.postbox.service.DetectionService
 import com.postbox.service.RefreshService
 import com.postbox.service.ServiceNotImplemented
+import com.postbox.service.TrackingNumberRules
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.auth.principal
@@ -66,13 +69,19 @@ fun Route.parcelRoutes(
                     return@post
                 }
             }
+            val detection = if (carrier != null) {
+                DetectionResult(carrier, DetectionMethod.OVERRIDE, TrackingNumberRules.candidatesFor(trackingNumber))
+            } else {
+                detectionService.detect(trackingNumber, null, req.metadata ?: emptyMap())
+            }
             val created = withContext(Dispatchers.IO) {
                 parcels.createParcel(
                     userId = call.currentUserId(),
                     trackingNumber = trackingNumber,
                     displayName = req.displayName ?: trackingNumber,
                     status = "UNKNOWN",
-                    carrier = carrier?.id,
+                    carrier = detection.carrier?.id,
+                    detectionMethod = detection.method.name.lowercase(),
                     carrierMetadata = req.metadata?.let { Json.encodeToString(it) },
                 )
             }
@@ -95,23 +104,15 @@ fun Route.parcelRoutes(
                     return@post
                 }
             }
-            try {
-                val result = detectionService.detect(trackingNumber, carrier, req.metadata ?: emptyMap())
-                call.respond(
-                    DetectResponse(
-                        trackingNumber = trackingNumber,
-                        carrier = result.carrier?.id,
-                        method = result.method.name.lowercase(),
-                        candidates = result.candidates.map { it.id },
-                    ),
-                )
-            } catch (e: ServiceNotImplemented) {
-                call.respondError(
-                    HttpStatusCode.NotImplemented,
-                    "not_implemented",
-                    "Tracking number detection is not implemented yet",
-                )
-            }
+            val result = detectionService.detect(trackingNumber, carrier, req.metadata ?: emptyMap())
+            call.respond(
+                DetectResponse(
+                    trackingNumber = trackingNumber,
+                    carrier = result.carrier?.id,
+                    method = result.method.name.lowercase(),
+                    candidates = result.candidates.map { it.id },
+                ),
+            )
         }
         route("/{id}") {
             get {
@@ -148,6 +149,7 @@ fun Route.parcelRoutes(
                         displayName = req.displayName ?: parcel.displayName,
                         status = parcel.status,
                         carrier = carrier?.id ?: parcel.carrier,
+                        detectionMethod = if (carrier != null) "override" else parcel.detectionMethod,
                         carrierMetadata = req.metadata?.let { Json.encodeToString(it) } ?: parcel.carrierMetadata,
                         lastCheckedAt = parcel.lastCheckedAt,
                         archivedAt = archivedAt,
