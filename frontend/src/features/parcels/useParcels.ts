@@ -3,10 +3,30 @@ import { useApi } from "../../api/ApiContext";
 import type { CreateParcelRequest, DetectRequest, UpdateParcelRequest } from "../../api/client";
 
 export const parcelsQueryKey = ["parcels"];
+export const parcelQueryKey = (id: string) => ["parcels", id] as const;
+export const parcelEventsQueryKey = (id: string) => ["parcels", id, "events"] as const;
 
 export function useParcels() {
   const api = useApi();
   return useQuery({ queryKey: parcelsQueryKey, queryFn: () => api.listParcels() });
+}
+
+export function useParcel(id: string | undefined) {
+  const api = useApi();
+  return useQuery({
+    queryKey: parcelQueryKey(id ?? ""),
+    queryFn: () => api.getParcel(id as string),
+    enabled: id !== undefined,
+  });
+}
+
+export function useParcelEvents(id: string | undefined) {
+  const api = useApi();
+  return useQuery({
+    queryKey: parcelEventsQueryKey(id ?? ""),
+    queryFn: () => api.listParcelEvents(id as string),
+    enabled: id !== undefined,
+  });
 }
 
 export function useDetectCarrier() {
@@ -47,6 +67,10 @@ export function useRefreshParcel() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.refreshParcel(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: parcelsQueryKey }),
+    onSuccess: (_parcel, id) => {
+      queryClient.invalidateQueries({ queryKey: parcelsQueryKey });
+      queryClient.invalidateQueries({ queryKey: parcelQueryKey(id) });
+      queryClient.invalidateQueries({ queryKey: parcelEventsQueryKey(id) });
+    },
   });
 }

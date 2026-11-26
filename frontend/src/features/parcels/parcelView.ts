@@ -1,4 +1,4 @@
-import type { Parcel, TrackingStatus } from "../../api/client";
+import type { DetectionMethod, Parcel, TrackingStatus } from "../../api/client";
 
 export type ParcelView = "all" | "in-transit" | "delivered" | "attention" | "archived";
 
@@ -27,6 +27,12 @@ export function statusChipClass(status: TrackingStatus): string {
   if (status === "EXCEPTION") return "chip chip-red";
   if (status === "OUT_FOR_DELIVERY") return "chip chip-orange";
   return "chip chip-muted";
+}
+
+export function detectionMethodLabel(method: DetectionMethod | null | undefined): string {
+  if (method === "override") return "Manual carrier selection";
+  if (method === "rule" || method === "probe") return "Carrier detected automatically";
+  return "Carrier not detected yet";
 }
 
 export interface ParcelCounts {
