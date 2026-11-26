@@ -1,7 +1,9 @@
 package com.postbox.api
 
 import com.postbox.auth.PostboxPrincipal
+import com.postbox.carrier.CarrierError
 import com.postbox.carrier.CarrierId
+import com.postbox.carrier.MetadataField
 import com.postbox.db.ParcelRecord
 import com.postbox.db.ParcelRepository
 import com.postbox.db.nowIso
@@ -37,7 +39,9 @@ fun Route.parcelRoutes(
             val userId = call.currentUserId()
             val owned = withContext(Dispatchers.IO) { parcels.listParcelsForUser(userId) }
             val refreshed = refreshService.refreshStale(owned)
-            val responses = refreshed.map { it.toApiResponse(parcels, userId) }
+            val responses = refreshed.map { outcome ->
+                outcome.parcel.toApiResponse(parcels, userId, outcome.missingMetadata)
+            }
             call.respond(
                 responses.sortedWith(
                     compareByDescending<ParcelResponse> { it.latestEvent?.occurredAt ?: "" }
@@ -178,6 +182,13 @@ fun Route.parcelRoutes(
                     call.respond(refreshed.toApiResponse(parcels, userId))
                 } catch (e: ParcelNotFound) {
                     call.parcelNotFound()
+                } catch (e: CarrierError.NeedsMetadata) {
+                    call.respondError(
+                        HttpStatusCode.Conflict,
+                        "missing-carrier-metadata",
+                        "The carrier requires additional metadata: ${e.fields.joinToString(", ") { it.name }}",
+                        fields = e.fields.map { it.toResponse() },
+                    )
                 }
             }
         }
@@ -194,7 +205,11 @@ private suspend fun ApplicationCall.ownedParcel(parcels: ParcelRepository): Parc
 private suspend fun ApplicationCall.parcelNotFound() =
     respondError(HttpStatusCode.NotFound, "parcel-not-found", "No parcel with this id exists")
 
-private suspend fun ParcelRecord.toApiResponse(parcels: ParcelRepository, userId: String): ParcelResponse {
+private suspend fun ParcelRecord.toApiResponse(
+    parcels: ParcelRepository,
+    userId: String,
+    missingMetadata: List<MetadataField> = emptyList(),
+): ParcelResponse {
     val latestEvent = withContext(Dispatchers.IO) { parcels.findLatestEventForUser(userId, id) }
-    return toResponse(latestEvent)
+    return toResponse(latestEvent, missingMetadata.ifEmpty { null })
 }

@@ -1,5 +1,6 @@
 package com.postbox.api
 
+import com.postbox.carrier.MetadataField
 import com.postbox.db.ParcelEventRecord
 import com.postbox.db.ParcelRecord
 import com.postbox.db.UserRecord
@@ -73,6 +74,14 @@ data class ParcelEventResponse(
 )
 
 @Serializable
+data class MetadataFieldResponse(
+    val name: String,
+    val label: String,
+    val hint: String,
+    val validationRegex: String?,
+)
+
+@Serializable
 data class ParcelResponse(
     val id: String,
     val trackingNumber: String,
@@ -81,6 +90,7 @@ data class ParcelResponse(
     val displayName: String,
     val status: String,
     val metadata: Map<String, String>?,
+    val missingMetadata: List<MetadataFieldResponse>?,
     val lastCheckedAt: String?,
     val lastCheckError: String?,
     val createdAt: String,
@@ -104,7 +114,11 @@ data class DetectResponse(
 )
 
 @Serializable
-data class ApiError(val code: String, val message: String)
+data class ApiError(
+    val code: String,
+    val message: String,
+    val fields: List<MetadataFieldResponse>? = null,
+)
 
 @Serializable
 data class ErrorResponse(val error: ApiError)
@@ -126,7 +140,17 @@ fun ParcelEventRecord.toResponse() = ParcelEventResponse(
     location = location,
 )
 
-fun ParcelRecord.toResponse(latestEvent: ParcelEventRecord? = null) = ParcelResponse(
+fun MetadataField.toResponse() = MetadataFieldResponse(
+    name = name,
+    label = label,
+    hint = hint,
+    validationRegex = validationRegex,
+)
+
+fun ParcelRecord.toResponse(
+    latestEvent: ParcelEventRecord? = null,
+    missingMetadata: List<MetadataField>? = null,
+) = ParcelResponse(
     id = id,
     trackingNumber = trackingNumber,
     carrier = carrier,
@@ -134,6 +158,7 @@ fun ParcelRecord.toResponse(latestEvent: ParcelEventRecord? = null) = ParcelResp
     displayName = displayName,
     status = status,
     metadata = carrierMetadata?.let { Json.decodeFromString<Map<String, String>>(it) },
+    missingMetadata = missingMetadata?.map { it.toResponse() },
     lastCheckedAt = lastCheckedAt,
     lastCheckError = lastCheckError,
     createdAt = createdAt,
