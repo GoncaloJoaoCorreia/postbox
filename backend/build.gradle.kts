@@ -59,6 +59,7 @@ tasks.processResources {
 tasks.processTestResources {
     from(rootProject.file("docs/carriers/fixtures")) {
         include("ctt-*.json")
+        include("linkdo-*")
         into("fixtures")
     }
 }
