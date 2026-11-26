@@ -1,0 +1,5 @@
+HTTP/2 404
+content-type: application/json
+
+(empty body — the guest API also answers an unknown 14-digit number with a plain 404;
+ the 400 exceptionType=PARCEL_NOT_FOUND variant only settles it when no postcode was sent)

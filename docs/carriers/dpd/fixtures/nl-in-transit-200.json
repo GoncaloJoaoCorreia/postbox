@@ -1,0 +1,84 @@
+{
+  "parcelNumber": "05220000000202",
+  "shipmentId": "05220000000202",
+  "status": {
+    "status": 2,
+    "description": "IN_TRANSIT",
+    "deliveryType": "HOME",
+    "eventDateAndTime": "2026-11-13T21:26:00",
+    "eventDateAndTimeZoneId": "Europe/Amsterdam",
+    "city": null,
+    "countryCode": "NL",
+    "homeDelivery": true
+  },
+  "deliveryDate": null,
+  "parcelSearchType": "BY_PARCEL_NUMBER",
+  "fmpRedirectionPossibility": true,
+  "receiver": {
+    "name": null,
+    "companyName": null,
+    "emailAddress": null,
+    "phoneNumber": null,
+    "address": {
+      "streetName": null,
+      "houseNumber": null,
+      "zipCode": null,
+      "city": null,
+      "country": null
+    },
+    "geoPosition": null
+  },
+  "parcelHistory": [
+    {
+      "status": 0,
+      "description": "ORDER_CREATED",
+      "deliveryType": null,
+      "eventDateAndTime": "2026-11-12T16:31:00",
+      "eventDateAndTimeZoneId": "+01:00",
+      "city": null,
+      "countryCode": null,
+      "homeDelivery": false
+    },
+    {
+      "status": 1,
+      "description": "PARCEL_HANDED",
+      "deliveryType": null,
+      "eventDateAndTime": "2026-11-12T18:05:12",
+      "eventDateAndTimeZoneId": "+01:00",
+      "city": null,
+      "countryCode": null,
+      "homeDelivery": false
+    },
+    {
+      "status": 2,
+      "description": "IN_TRANSIT",
+      "deliveryType": null,
+      "eventDateAndTime": "2026-11-13T12:25:00",
+      "eventDateAndTimeZoneId": "+01:00",
+      "city": null,
+      "countryCode": null,
+      "homeDelivery": false
+    },
+    {
+      "status": 3,
+      "description": "AT_DELIVERY_CENTER",
+      "deliveryType": null,
+      "eventDateAndTime": "2026-11-13T21:26:00",
+      "eventDateAndTimeZoneId": "+01:00",
+      "city": null,
+      "countryCode": null,
+      "homeDelivery": false
+    }
+  ],
+  "actionBoxStatus": "DISABLED",
+  "parcelType": "INCOMING",
+  "type": "NORMAL",
+  "refused": false,
+  "confirmation": "FALSE",
+  "returning": false,
+  "digitalLabelAvailable": false,
+  "shipmentBUCode": "035",
+  "isPredictiveDate": false,
+  "isMasterParcel": true,
+  "shipmentType": "SHIPMENT"
+}
