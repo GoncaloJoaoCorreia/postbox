@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ApiError, type Carrier, type Parcel, type UpdateParcelRequest } from "../../api/client";
 import { CARRIERS, carrierLabel } from "./carriers";
 import { MetadataPrompt } from "./MetadataPrompt";
+import { STATUS_LABELS, statusChipClass } from "./parcelView";
 import { relativeTime } from "./relativeTime";
 import { useDeleteParcel, useUpdateParcel } from "./useParcels";
 
@@ -63,44 +64,63 @@ export function ParcelRow({ parcel }: { parcel: Parcel }) {
 
   return (
     <li className="parcel-row">
-      <div className="parcel-row-main">
+      <div className="parcel-row-top">
         <span className="carrier-badge">{carrierLabel(parcel.carrier)}</span>
         <Link to={`/parcels/${parcel.id}`} className="parcel-name">
           {parcel.displayName}
         </Link>
+        <span className={statusChipClass(parcel.status)}>{STATUS_LABELS[parcel.status]}</span>
+        {parcel.latestEvent && (
+          <span className="parcel-time">{relativeTime(parcel.latestEvent.occurredAt)}</span>
+        )}
+        <span className="parcel-row-actions">
+          <button type="button" className="btn-ghost btn-small" onClick={startEdit}>
+            Edit
+          </button>
+          <button
+            type="button"
+            className="btn-ghost btn-small"
+            onClick={() => setConfirmingDelete(true)}
+          >
+            Delete
+          </button>
+        </span>
+      </div>
+      <div className="parcel-row-bottom">
+        {parcel.latestEvent && (
+          <span className="parcel-event">{parcel.latestEvent.description}</span>
+        )}
         <span className="tracking-number">{parcel.trackingNumber}</span>
       </div>
-      {parcel.latestEvent && (
-        <p className="parcel-event">
-          {parcel.latestEvent.description} · {relativeTime(parcel.latestEvent.occurredAt)}
-        </p>
-      )}
       {parcel.lastCheckError && <p className="parcel-warning">{parcel.lastCheckError}</p>}
       {missingMetadata.length > 0 && !showMetadata && (
-        <button type="button" onClick={() => setShowMetadata(true)}>
+        <button type="button" className="link-button" onClick={() => setShowMetadata(true)}>
           Add required details ({missingMetadata.length})
         </button>
       )}
       {missingMetadata.length > 0 && showMetadata && (
         <MetadataPrompt parcel={parcel} onDone={() => setShowMetadata(false)} />
       )}
-      <div className="parcel-actions">
-        <button type="button" onClick={startEdit}>
-          Edit
-        </button>
-        <button type="button" onClick={() => setConfirmingDelete(true)}>
-          Delete
-        </button>
-      </div>
       {confirmingDelete && (
         <div className="confirm-delete">
           <p>Delete this parcel and its events?</p>
-          <button type="button" onClick={handleDelete} disabled={deleteParcel.isPending}>
-            Confirm delete
-          </button>
-          <button type="button" onClick={() => setConfirmingDelete(false)}>
-            Cancel
-          </button>
+          <div className="parcel-row-actions">
+            <button
+              type="button"
+              className="btn-danger btn-small"
+              onClick={handleDelete}
+              disabled={deleteParcel.isPending}
+            >
+              Confirm delete
+            </button>
+            <button
+              type="button"
+              className="btn-ghost btn-small"
+              onClick={() => setConfirmingDelete(false)}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
       {editing && (
@@ -132,11 +152,15 @@ export function ParcelRow({ parcel }: { parcel: Parcel }) {
             />
             Archived
           </label>
-          <div className="parcel-actions">
-            <button type="submit" disabled={updateParcel.isPending}>
+          <div className="parcel-row-actions">
+            <button
+              type="submit"
+              className="btn-primary btn-small"
+              disabled={updateParcel.isPending}
+            >
               Save
             </button>
-            <button type="button" onClick={() => setEditing(false)}>
+            <button type="button" className="btn-ghost btn-small" onClick={() => setEditing(false)}>
               Cancel
             </button>
           </div>
