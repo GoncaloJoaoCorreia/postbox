@@ -3,6 +3,7 @@ package com.postbox
 import com.typesafe.config.ConfigFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
@@ -41,5 +42,13 @@ class ConfigTest {
         assertEquals(30.minutes, config.refresh.staleAfter)
         assertEquals(4, config.refresh.maxConcurrentProbes)
         assertEquals(3.days, config.refresh.deliveredGrace)
+        assertNull(config.dhlApiKey)
+    }
+
+    @Test
+    fun `DHL_API_KEY env var sets the DHL API key`() {
+        val env = ConfigFactory.parseString("""DHL_API_KEY = "test-dhl-key"""")
+        val config = ConfigLoader.load(env = env)
+        assertEquals("test-dhl-key", config.dhlApiKey)
     }
 }
