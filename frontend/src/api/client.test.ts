@@ -63,6 +63,49 @@ describe("createApiClient", () => {
     await expect(client.deleteParcel("abc")).resolves.toBeUndefined();
   });
 
+  it("invokes onUnauthorized on a 401 from a protected endpoint", async () => {
+    mswServer.use(
+      http.get("*/api/v1/parcels", () =>
+        HttpResponse.json(
+          { error: { code: "unauthorized", message: "Missing or invalid token" } },
+          { status: 401 },
+        ),
+      ),
+    );
+    let calls = 0;
+    const client = createApiClient({
+      baseUrl: "",
+      getToken: () => "expired-jwt",
+      onUnauthorized: () => {
+        calls += 1;
+      },
+    });
+    const failure = await client.listParcels().catch((e: unknown) => e);
+    expect(failure).toBeInstanceOf(ApiError);
+    expect(calls).toBe(1);
+  });
+
+  it("does not invoke onUnauthorized for a 401 from the login endpoint", async () => {
+    mswServer.use(
+      http.post("*/api/v1/auth/login", () =>
+        HttpResponse.json(
+          { error: { code: "invalid-credentials", message: "Invalid email or password" } },
+          { status: 401 },
+        ),
+      ),
+    );
+    let calls = 0;
+    const client = createApiClient({
+      baseUrl: "",
+      getToken: () => null,
+      onUnauthorized: () => {
+        calls += 1;
+      },
+    });
+    await client.login("a@b.c", "wrong").catch(() => undefined);
+    expect(calls).toBe(0);
+  });
+
   it("falls back to a status-based error when the body is not the envelope", async () => {
     mswServer.use(http.get("*/api/v1/parcels", () => new HttpResponse("boom", { status: 500 })));
     const client = createApiClient({ baseUrl: "", getToken: () => "t" });

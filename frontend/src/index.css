@@ -36,6 +36,12 @@ button {
   padding: 0.5rem 1rem;
 }
 
-[role="alert"] {
+[role="alert"],
+.field-error {
   color: #b00020;
+}
+
+.field-error {
+  margin: 0;
+  font-size: 0.875rem;
 }

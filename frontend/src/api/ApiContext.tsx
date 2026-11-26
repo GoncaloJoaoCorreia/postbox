@@ -4,9 +4,24 @@ import { getStoredToken } from "./tokenStorage";
 
 const ApiContext = createContext<ApiClient | null>(null);
 
+type UnauthorizedListener = () => void;
+
+const unauthorizedListeners = new Set<UnauthorizedListener>();
+
+export function onUnauthorized(listener: UnauthorizedListener): () => void {
+  unauthorizedListeners.add(listener);
+  return () => {
+    unauthorizedListeners.delete(listener);
+  };
+}
+
 export function ApiProvider({ children }: { children: ReactNode }) {
   const [client] = useState<ApiClient>(() =>
-    createApiClient({ baseUrl: "", getToken: getStoredToken }),
+    createApiClient({
+      baseUrl: "",
+      getToken: getStoredToken,
+      onUnauthorized: () => unauthorizedListeners.forEach((listener) => listener()),
+    }),
   );
   return <ApiContext.Provider value={client}>{children}</ApiContext.Provider>;
 }

@@ -1,9 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterAll, afterEach, beforeAll } from "vitest";
+import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
+import { afterAll, afterEach, beforeAll } from "vitest";
 
-export const mswServer = setupServer();
+export const mswServer = setupServer(
+  http.get("*/api/v1/setup/status", () => HttpResponse.json({ setupPending: false })),
+);
 
 beforeAll(() => mswServer.listen({ onUnhandledFrame: "error" }));
 afterEach(() => {
