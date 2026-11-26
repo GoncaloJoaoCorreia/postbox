@@ -112,7 +112,7 @@ Kotlin/Ktor monorepo scaffold. The only Gradle module is `:backend` (the server)
 ## Wiring
 
 - Package `com.postbox`; entrypoint `backend/src/main/kotlin/com/postbox/Application.kt` (mainClass `com.postbox.ApplicationKt`). The root `run` task in `build.gradle.kts` just delegates to `:backend:run`.
-- Routes are registered in `Application.module(config)`; currently only `GET /healthz` → `{"status":"ok"}`, unauthenticated.
+- Routes are registered in `Application.module(config, db)`: `GET /healthz` → `{"status":"ok"}` (unauthenticated) plus the `/api/v1` group — public `GET setup/status`, `POST setup`, `POST auth/login`; every other `/api/v1` route sits behind the `auth-jwt` bearer provider (HS256 JWT, Argon2id password hashes).
 - Logging is structured JSON on the console: Logback + LogstashEncoder, config at `backend/src/main/resources/logback.xml`.
 
 ## Config

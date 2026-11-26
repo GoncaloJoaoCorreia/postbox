@@ -1,5 +1,7 @@
 package com.postbox
 
+import com.postbox.db.closeDatabase
+import com.postbox.db.freshTestDatabase
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
@@ -19,11 +21,16 @@ class HealthzTest {
 
     @Test
     fun `GET healthz returns 200 with status ok body`() = testApplication {
-        application {
-            module(testConfig())
+        val db = freshTestDatabase("healthz")
+        try {
+            application {
+                module(testConfig(), db)
+            }
+            val response = client.get("/healthz")
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals("""{"status":"ok"}""", response.bodyAsText())
+        } finally {
+            closeDatabase(db)
         }
-        val response = client.get("/healthz")
-        assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals("""{"status":"ok"}""", response.bodyAsText())
     }
 }

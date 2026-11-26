@@ -1,6 +1,8 @@
 package com.postbox
 
 import com.postbox.carrier.CarrierId
+import com.postbox.db.closeDatabase
+import com.postbox.db.freshTestDatabase
 import com.typesafe.config.ConfigFactory
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -40,49 +42,55 @@ class CarrierWiringTest {
 
     @Test
     fun `module exposes the carrier registry via attributes and healthz still works`() = testApplication {
-        application {
-            module(
-                AppConfig(
-                    host = "127.0.0.1",
-                    port = 0, // testApplication runs in-process and does not bind a real port
-                    jwtSecret = "test-secret",
-                    sqlitePath = "build/tmp/test/postbox.db",
-                    dataDir = "build/tmp/test-data",
-                    carriers = mapOf(
-                        CarrierId.DHL to CarrierSettings(
-                            connectTimeoutMs = 5000,
-                            socketTimeoutMs = 10000,
-                            requestTimeoutMs = 10000,
-                            userAgent = "postbox-test/1.0",
-                            minRequestIntervalMs = 5000,
-                        )
-                    ),
-                )
-            )
-        }
-        // Ktor's testApplication starts the app lazily (on the first client call
-        // or via startApplication()); the module — and with it the attributes —
-        // only exists once the application has started.
-        startApplication()
-        // testApplication never raises ApplicationStopping, so the per-carrier
-        // clients must be closed here — in a finally, so a failed assertion
-        // cannot leak the CIO engine for the rest of the test JVM.
-        val httpClients = application.attributes[CarrierHttpClientsAttribute]
+        val db = freshTestDatabase("carrier-wiring")
         try {
-            val registry = application.attributes[CarrierRegistryAttribute]
-            assertNotNull(registry)
-            // No real carrier adapters are registered yet.
-            assertNull(registry.lookup(CarrierId.DHL))
-            assertTrue(registry.all.isEmpty())
-            // The per-carrier clients and limiters were built from the same config entry.
-            assertEquals(setOf(CarrierId.DHL), httpClients.carriers)
-            assertEquals(setOf(CarrierId.DHL), application.attributes[CarrierRateLimitersAttribute].keys)
+            application {
+                module(
+                    AppConfig(
+                        host = "127.0.0.1",
+                        port = 0, // testApplication runs in-process and does not bind a real port
+                        jwtSecret = "test-secret",
+                        sqlitePath = "build/tmp/test/postbox.db",
+                        dataDir = "build/tmp/test-data",
+                        carriers = mapOf(
+                            CarrierId.DHL to CarrierSettings(
+                                connectTimeoutMs = 5000,
+                                socketTimeoutMs = 10000,
+                                requestTimeoutMs = 10000,
+                                userAgent = "postbox-test/1.0",
+                                minRequestIntervalMs = 5000,
+                            )
+                        ),
+                    ),
+                    db,
+                )
+            }
+            // Ktor's testApplication starts the app lazily (on the first client call
+            // or via startApplication()); the module — and with it the attributes —
+            // only exists once the application has started.
+            startApplication()
+            // testApplication never raises ApplicationStopping, so the per-carrier
+            // clients must be closed here — in a finally, so a failed assertion
+            // cannot leak the CIO engine for the rest of the test JVM.
+            val httpClients = application.attributes[CarrierHttpClientsAttribute]
+            try {
+                val registry = application.attributes[CarrierRegistryAttribute]
+                assertNotNull(registry)
+                // No real carrier adapters are registered yet.
+                assertNull(registry.lookup(CarrierId.DHL))
+                assertTrue(registry.all.isEmpty())
+                // The per-carrier clients and limiters were built from the same config entry.
+                assertEquals(setOf(CarrierId.DHL), httpClients.carriers)
+                assertEquals(setOf(CarrierId.DHL), application.attributes[CarrierRateLimitersAttribute].keys)
 
-            val response = client.get("/healthz")
-            assertEquals(HttpStatusCode.OK, response.status)
-            assertEquals("""{"status":"ok"}""", response.bodyAsText())
+                val response = client.get("/healthz")
+                assertEquals(HttpStatusCode.OK, response.status)
+                assertEquals("""{"status":"ok"}""", response.bodyAsText())
+            } finally {
+                httpClients.close()
+            }
         } finally {
-            httpClients.close()
+            closeDatabase(db)
         }
     }
 
