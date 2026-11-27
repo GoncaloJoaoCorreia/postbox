@@ -1,0 +1,18 @@
+services:
+  postbox:
+    image: ghcr.io/goncalojoaocorreia/postbox:latest
+    container_name: postbox
+    ports:
+      - "8080:8080"
+    environment:
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET in a .env file next to this compose file}
+      - PORT=8080
+      - POSTBOX_ENV=production
+      - DATA_DIR=/data
+      - SQLITE_PATH=/data/postbox.db
+    volumes:
+      - postbox-data:/data
+    restart: unless-stopped
+
+volumes:
+  postbox-data:

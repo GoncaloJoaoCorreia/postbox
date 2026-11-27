@@ -19,6 +19,9 @@ data/
 *.db-wal
 *.db-shm
 
+# Local secrets (docker-compose quick start reads JWT_SECRET from here)
+.env
+
 # OS
 .DS_Store
 
