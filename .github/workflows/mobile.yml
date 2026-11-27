@@ -36,4 +36,4 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-36" "build-tools;36.1.0"
 
       - name: Build, lint and test the mobile modules
-        run: ./gradlew :shared:check :composeApp:check :composeApp:assembleDebug
+        run: ./gradlew :shared:check :composeApp:check :androidApp:check :androidApp:assembleDebug

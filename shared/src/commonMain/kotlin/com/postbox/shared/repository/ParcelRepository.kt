@@ -12,6 +12,7 @@ import com.postbox.shared.cache.toParcelEvent
 import com.postbox.shared.cache.toRow
 import com.postbox.shared.domain.model.Parcel
 import com.postbox.shared.domain.model.ParcelEvent
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -19,7 +20,8 @@ import kotlinx.coroutines.withContext
 
 class ParcelRepository(
     private val remote: ParcelsRemoteDataSource,
-    private val db: PostboxCache
+    private val db: PostboxCache,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
     fun parcelsFlow(): Flow<List<Parcel>> =
         db.postboxCacheQueries.selectParcels().asFlow()
@@ -30,7 +32,7 @@ class ParcelRepository(
             .map { query -> query.executeAsList().map { it.toParcelEvent() } }
 
     suspend fun listParcels(): List<Parcel> {
-        val cached = withContext(Dispatchers.Default) {
+        val cached = withContext(ioDispatcher) {
             db.postboxCacheQueries.selectParcels().executeAsList().map { it.toParcel() }
         }
         return try {
@@ -41,7 +43,7 @@ class ParcelRepository(
     }
 
     suspend fun parcelDetail(id: String): Parcel {
-        val cached = withContext(Dispatchers.Default) {
+        val cached = withContext(ioDispatcher) {
             db.postboxCacheQueries.selectParcelById(id).executeAsOneOrNull()?.toParcel()
         }
         return try {
@@ -52,7 +54,7 @@ class ParcelRepository(
     }
 
     suspend fun parcelEvents(id: String): List<ParcelEvent> {
-        val cached = withContext(Dispatchers.Default) {
+        val cached = withContext(ioDispatcher) {
             db.postboxCacheQueries.selectEventsByParcel(id).executeAsList().map { it.toParcelEvent() }
         }
         return try {
@@ -65,7 +67,12 @@ class ParcelRepository(
     suspend fun refreshParcel(id: String): Parcel =
         remote.refreshParcel(id).also { persistParcels(listOf(it)) }
 
-    private suspend fun persistParcels(parcels: List<Parcel>) = withContext(Dispatchers.Default) {
+    suspend fun clearCache() = withContext(ioDispatcher) {
+        db.postboxCacheQueries.clearEvents()
+        db.postboxCacheQueries.clearParcels()
+    }
+
+    private suspend fun persistParcels(parcels: List<Parcel>) = withContext(ioDispatcher) {
         val queries = db.postboxCacheQueries
         parcels.forEach { parcel ->
             queries.upsertParcelRow(parcel.toRow()).await()
@@ -73,7 +80,7 @@ class ParcelRepository(
         }
     }
 
-    private suspend fun persistEvents(parcelId: String, events: List<ParcelEvent>) = withContext(Dispatchers.Default) {
+    private suspend fun persistEvents(parcelId: String, events: List<ParcelEvent>) = withContext(ioDispatcher) {
         val queries = db.postboxCacheQueries
         events.forEach { queries.upsertEventRow(it.toEventRow(parcelId)).await() }
     }

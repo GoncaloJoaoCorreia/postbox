@@ -83,3 +83,9 @@ ON CONFLICT(id) DO UPDATE SET
 deleteEventsForParcel:
 DELETE FROM parcelEvent
 WHERE parcel_id = ?;
+
+clearEvents:
+DELETE FROM parcelEvent;
+
+clearParcels:
+DELETE FROM parcel;

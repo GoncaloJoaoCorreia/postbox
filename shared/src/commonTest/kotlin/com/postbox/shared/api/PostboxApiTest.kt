@@ -8,25 +8,41 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 private class FakeTokenStorage : TokenStorage {
     var access: String? = "token-123"
+    var refresh: String? = null
+    var session: String? = null
+    private val changeSignal = MutableSharedFlow<Unit>(replay = 1)
 
     override fun accessToken(): String? = access
 
-    override fun refreshToken(): String? = null
+    override fun refreshToken(): String? = refresh
 
-    override fun save(accessToken: String, refreshToken: String) {
+    override fun sessionId(): String? = session
+
+    override fun save(accessToken: String, refreshToken: String, sessionId: String) {
         access = accessToken
+        refresh = refreshToken
+        session = sessionId
+        changeSignal.tryEmit(Unit)
     }
 
     override fun clear() {
         access = null
+        refresh = null
+        session = null
+        changeSignal.tryEmit(Unit)
     }
+
+    override fun changes(): Flow<Unit> = changeSignal
 }
 
 class PostboxApiTest {
@@ -71,6 +87,19 @@ class PostboxApiTest {
         assertEquals(1, parcels.size)
         assertEquals(Carrier.dhl, parcels.first().carrier)
         assertEquals(TrackingStatus.IN_TRANSIT, parcels.first().latestEvent?.status)
+    }
+
+    @Test
+    fun unknownEnumValuesFromNewerServerDegradeGracefully() = runTest {
+        val body = """[{"id":"11111111-1111-1111-1111-111111111111","trackingNumber":"X1","displayName":"X1","status":"TELEPORTED","createdAt":"2026-11-27T10:00:00Z","latestEvent":null,"carrier":"quantum","detectionMethod":"magic"}]"""
+        val engine = MockEngine {
+            respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+        }
+        val api = PostboxApi("http://localhost:8080", FakeTokenStorage(), engine)
+        val parcel = api.listParcels().single()
+        assertEquals(TrackingStatus.UNKNOWN, parcel.status)
+        assertNull(parcel.carrier)
+        assertNull(parcel.detectionMethod)
     }
 
     @Test

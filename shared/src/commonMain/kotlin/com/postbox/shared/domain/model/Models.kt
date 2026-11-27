@@ -58,3 +58,26 @@ data class Session(
     val refreshToken: String,
     val sessionId: String
 )
+
+enum class UserRole {
+    USER, ADMIN
+}
+
+@Serializable
+data class UserAccount(
+    val id: String,
+    val email: String,
+    val displayName: String,
+    val role: UserRole,
+    val isActive: Boolean,
+    val createdAt: Instant
+)
+
+@Serializable
+data class DeviceSessionInfo(
+    val id: String,
+    val deviceName: String,
+    val createdAt: Instant,
+    val lastUsedAt: Instant,
+    val revokedAt: Instant?
+)

@@ -8,18 +8,25 @@ import com.postbox.shared.domain.model.ParcelEvent
 import com.postbox.shared.domain.model.Session
 import com.postbox.shared.domain.model.TrackingStatus
 import com.postbox.shared.api.model.Carrier as ApiCarrier
+import com.postbox.shared.api.model.DeviceSession as ApiDeviceSession
 import com.postbox.shared.api.model.DetectionMethod as ApiDetectionMethod
 import com.postbox.shared.api.model.LoginResponse
 import com.postbox.shared.api.model.MetadataField as ApiMetadataField
 import com.postbox.shared.api.model.Parcel as ApiParcel
 import com.postbox.shared.api.model.ParcelEvent as ApiParcelEvent
 import com.postbox.shared.api.model.TrackingStatus as ApiTrackingStatus
+import com.postbox.shared.api.model.User as ApiUser
+import com.postbox.shared.api.model.UserRole as ApiUserRole
+import com.postbox.shared.domain.model.DeviceSessionInfo
+import com.postbox.shared.domain.model.UserAccount
+import com.postbox.shared.domain.model.UserRole
 
-fun ApiTrackingStatus.toDomain(): TrackingStatus = TrackingStatus.valueOf(name)
+fun ApiTrackingStatus.toDomain(): TrackingStatus =
+    runCatching { TrackingStatus.valueOf(name) }.getOrElse { TrackingStatus.UNKNOWN }
 
-fun ApiCarrier.toDomain(): Carrier = Carrier.valueOf(name)
+fun ApiCarrier.toDomain(): Carrier? = runCatching { Carrier.valueOf(name) }.getOrNull()
 
-fun ApiDetectionMethod.toDomain(): DetectionMethod = DetectionMethod.valueOf(name)
+fun ApiDetectionMethod.toDomain(): DetectionMethod? = runCatching { DetectionMethod.valueOf(name) }.getOrNull()
 
 fun ApiMetadataField.toDomain(): MetadataField = MetadataField(
     name = name,
@@ -59,4 +66,23 @@ fun LoginResponse.toSession(): Session = Session(
     accessToken = token,
     refreshToken = refreshToken,
     sessionId = sessionId
+)
+
+fun ApiUserRole.toDomain(): UserRole = runCatching { UserRole.valueOf(name) }.getOrElse { UserRole.USER }
+
+fun ApiUser.toDomain(): UserAccount = UserAccount(
+    id = id,
+    email = email,
+    displayName = displayName,
+    role = role.toDomain(),
+    isActive = isActive,
+    createdAt = createdAt
+)
+
+fun ApiDeviceSession.toDomain(): DeviceSessionInfo = DeviceSessionInfo(
+    id = id,
+    deviceName = deviceName,
+    createdAt = createdAt,
+    lastUsedAt = lastUsedAt,
+    revokedAt = revokedAt
 )
