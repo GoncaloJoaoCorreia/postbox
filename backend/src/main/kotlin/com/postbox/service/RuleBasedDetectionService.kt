@@ -11,12 +11,14 @@ import kotlinx.coroutines.launch
 
 /**
  * Rules-plus-probe detection: [TrackingNumberRules] produce the ranked candidates,
- * all registered candidate adapters are probed concurrently (each paced by its
- * per-carrier rate limiter) and the first adapter returning real tracking data
- * wins. A [CarrierError] of any kind (NotFound, NeedsMetadata, CarrierUnavailable,
- * RateLimited) only eliminates the candidate. A manual [carrierOverride] always
- * wins and is never probed away. When no probe hits, the top-ranked candidate is
- * kept provisionally (method [DetectionMethod.RULE]) until a later re-probe.
+ * all registered candidate adapters are probed concurrently (each adapter paces itself
+ * through its per-carrier rate limiter inside `track`) and the first adapter returning
+ * real tracking data wins. A [CarrierError] of any kind (NotFound, NeedsMetadata,
+ * CarrierUnavailable, RateLimited) only eliminates the candidate; a [CarrierError.RateLimited]
+ * additionally backs that carrier's limiter off by its `Retry-After` hint. A manual
+ * [carrierOverride] always wins and is never probed away. When no probe hits, the
+ * top-ranked candidate is kept provisionally (method [DetectionMethod.RULE]) until a
+ * later re-probe.
  */
 class RuleBasedDetectionService(
     private val registry: CarrierRegistry,
@@ -50,9 +52,10 @@ class RuleBasedDetectionService(
             val adapter = registry.lookup(carrier) ?: return@mapNotNull null
             launch {
                 try {
-                    rateLimiters[carrier]?.acquire()
                     adapter.track(trackingNumber, metadata)
                     hit.complete(carrier)
+                } catch (e: CarrierError.RateLimited) {
+                    rateLimiters[carrier]?.backOff(e.retryAfter)
                 } catch (e: CarrierError) {
                 }
             }

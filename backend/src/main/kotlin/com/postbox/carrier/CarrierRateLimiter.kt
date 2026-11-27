@@ -10,8 +10,9 @@ import kotlin.time.Instant
 /**
  * Suspend-based per-carrier rate limiter: every [acquire] is spaced at least [minInterval]
  * apart. The interval is a constructor parameter only — carrier defaults (e.g. DHL's one
- * call per 5s) belong to config, not here. The [clock] is injectable so tests can drive
- * virtual time instead of sleeping in real time.
+ * call per 5s) belong to config, not here. [backOff] pushes the next allowed slot out by a
+ * server-provided hint (a 429's `Retry-After`) on top of the configured interval. The
+ * [clock] is injectable so tests can drive virtual time instead of sleeping in real time.
  */
 class CarrierRateLimiter(
     private val minInterval: Duration,
@@ -30,5 +31,12 @@ class CarrierRateLimiter(
         // Advance by the minimum interval; resync to now if the limiter was idle so a
         // stale nextAllowed cannot let later calls through unpaced.
         nextAllowed = maxOf(nextAllowed, clock.now()) + minInterval
+    }
+
+    /** Pushes the next allowed slot out by [extra] (e.g. a 429's `Retry-After` hint). */
+    suspend fun backOff(extra: Duration): Unit = mutex.withLock {
+        if (extra > Duration.ZERO) {
+            nextAllowed = maxOf(nextAllowed, clock.now()) + extra
+        }
     }
 }

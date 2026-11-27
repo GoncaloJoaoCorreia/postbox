@@ -15,19 +15,27 @@ import com.postbox.db.UserRepository
 import com.postbox.db.closeDatabase
 import com.postbox.db.freshTestDatabase
 import com.postbox.db.isoUtc
+import com.postbox.carrier.CarrierRateLimiter
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 
 class RefreshServiceTest {
 
@@ -47,6 +55,21 @@ class RefreshServiceTest {
             inFlight.decrementAndGet()
             return FakeCarrier.deterministicResult(number)
         }
+    }
+
+    private class RateLimitedAdapter(
+        override val carrier: CarrierId,
+        private val retryAfter: Duration,
+    ) : CarrierAdapter {
+        override val requiredMetadata: Map<String, MetadataField> = emptyMap()
+
+        override suspend fun track(number: String, metadata: Map<String, String>): TrackingResult =
+            throw CarrierError.RateLimited(retryAfter)
+    }
+
+    /** Manually advanced clock so the test drives time explicitly instead of sleeping in real time. */
+    private class ManualClock(var now: kotlin.time.Instant) : Clock {
+        override fun now(): kotlin.time.Instant = now
     }
 
     @Test
@@ -139,6 +162,8 @@ class RefreshServiceTest {
                 lastCheckedAt = null,
                 archivedAt = null,
                 lastCheckError = null,
+                lastCheckErrorCode = null,
+                rateLimitedUntil = null,
                 estimatedDeliveryAt = null,
             )
             val refreshed = service.refresh(user.id, parcel.id)
@@ -187,6 +212,55 @@ class RefreshServiceTest {
 
             val cleared = serviceWith(withoutEta).refresh(user.id, parcel.id)
             assertNull(cleared.estimatedDeliveryAt, "a carrier that stops providing an ETA clears the stored one")
+        } finally {
+            closeDatabase(db)
+        }
+    }
+
+    @Test
+    fun `a rate-limited carrier marks the parcel with the structured code and backs the limiter off by the Retry-After hint`() = runTest {
+        val db = freshTestDatabase("refresh-rate-limited")
+        try {
+            val users = UserRepository(db)
+            val parcels = ParcelRepository(db)
+            val user = users.create("alice@example.com", "hash-1", displayName = "Alice")
+            val clock = ManualClock(kotlin.time.Instant.fromEpochMilliseconds(0))
+            val limiter = CarrierRateLimiter(minInterval = 1.seconds, clock = clock)
+            val service = DefaultRefreshService(
+                parcels = parcels,
+                registry = CarrierRegistry(mapOf(CarrierId.DHL to RateLimitedAdapter(CarrierId.DHL, 60.seconds))),
+                rateLimiters = mapOf(CarrierId.DHL to limiter),
+                settings = RefreshSettings(
+                    staleAfter = 30.minutes,
+                    maxConcurrentProbes = 4,
+                    deliveredGrace = 3.days,
+                ),
+                probeTimeouts = mapOf(CarrierId.DHL to 10.seconds),
+                clock = clock,
+            )
+            val parcel = parcels.createParcel(user.id, "1234567890", "P", "UNKNOWN", carrier = "dhl")
+
+            val refreshed = service.refresh(user.id, parcel.id)
+
+            assertEquals("rate_limited", refreshed.lastCheckErrorCode)
+            assertEquals(isoUtc(clock.now + 60.seconds), refreshed.rateLimitedUntil)
+            assertTrue(refreshed.lastCheckError!!.startsWith("carrier rate limit hit"))
+            assertNotNull(refreshed.lastCheckedAt)
+
+            var acquired = false
+            val job = launch {
+                limiter.acquire()
+                acquired = true
+            }
+            yield()
+            assertFalse(acquired, "the backOff must hold the next acquire")
+            advanceTimeBy(59.seconds)
+            runCurrent()
+            assertFalse(acquired)
+            advanceTimeBy(1.seconds)
+            runCurrent()
+            assertTrue(acquired, "once the Retry-After hint has elapsed the limiter lets a probe through")
+            job.join()
         } finally {
             closeDatabase(db)
         }

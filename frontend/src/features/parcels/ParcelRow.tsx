@@ -92,7 +92,14 @@ export function ParcelRow({ parcel }: { parcel: Parcel }) {
         )}
         <span className="tracking-number">{parcel.trackingNumber}</span>
       </div>
-      {parcel.lastCheckError && <p className="parcel-warning">{parcel.lastCheckError}</p>}
+      {parcel.lastCheckErrorCode === "rate_limited" ? (
+        <p className="chip chip-orange parcel-throttled" role="status">
+          Carrier is rate-limiting checks · showing data from{" "}
+          {parcel.lastCheckedAt ? relativeTime(parcel.lastCheckedAt) : "never"}
+        </p>
+      ) : (
+        parcel.lastCheckError && <p className="parcel-warning">{parcel.lastCheckError}</p>
+      )}
       {missingMetadata.length > 0 && !showMetadata && (
         <button type="button" className="link-button" onClick={() => setShowMetadata(true)}>
           Add required details ({missingMetadata.length})

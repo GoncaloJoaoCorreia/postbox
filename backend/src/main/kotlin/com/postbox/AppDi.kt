@@ -83,7 +83,7 @@ fun Application.appDependencies(config: AppConfig, db: Database) {
                 DhlAdapter(
                     client = resolve<CarrierHttpClients>()[CarrierId.DHL],
                     apiKey = dhlApiKey,
-                    rateLimiter = config.carriers.getValue(CarrierId.DHL).toRateLimiter(),
+                    rateLimiter = resolve<Map<CarrierId, CarrierRateLimiter>>().getValue(CarrierId.DHL),
                 )
             }
         } else {
@@ -93,7 +93,7 @@ fun Application.appDependencies(config: AppConfig, db: Database) {
             provide<CarrierAdapter>(name = CarrierId.CTT.id) {
                 PostCttAdapter(
                     client = resolve<CarrierHttpClients>()[CarrierId.CTT],
-                    rateLimiter = config.carriers.getValue(CarrierId.CTT).toRateLimiter(),
+                    rateLimiter = resolve<Map<CarrierId, CarrierRateLimiter>>().getValue(CarrierId.CTT),
                 )
             }
         }
@@ -109,7 +109,7 @@ fun Application.appDependencies(config: AppConfig, db: Database) {
             provide<CarrierAdapter>(name = CarrierId.PAACK.id) {
                 PaackAdapter(
                     client = resolve<CarrierHttpClients>()[CarrierId.PAACK],
-                    rateLimiter = config.carriers.getValue(CarrierId.PAACK).toRateLimiter(),
+                    rateLimiter = resolve<Map<CarrierId, CarrierRateLimiter>>().getValue(CarrierId.PAACK),
                 )
             }
         }
@@ -117,7 +117,7 @@ fun Application.appDependencies(config: AppConfig, db: Database) {
             provide<CarrierAdapter>(name = CarrierId.ECOSCOOTING.id) {
                 EcoScootingAdapter(
                     client = resolve<CarrierHttpClients>()[CarrierId.ECOSCOOTING],
-                    rateLimiter = config.carriers.getValue(CarrierId.ECOSCOOTING).toRateLimiter(),
+                    rateLimiter = resolve<Map<CarrierId, CarrierRateLimiter>>().getValue(CarrierId.ECOSCOOTING),
                 )
             }
         }

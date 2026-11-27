@@ -46,6 +46,32 @@ class CarrierRateLimiterTest {
     }
 
     @Test
+    fun `backOff pushes the next acquire out by the given duration on top of the interval`() = runTest {
+        val clock = ManualClock(Instant.fromEpochMilliseconds(0))
+        val limiter = CarrierRateLimiter(minInterval = 5.seconds, clock = clock)
+
+        limiter.acquire() // nextAllowed = +5s
+        limiter.backOff(60.seconds) // a 429's Retry-After hint: nextAllowed = +65s
+
+        var completed = false
+        val job = launch {
+            limiter.acquire()
+            completed = true
+        }
+        yield()
+        assertFalse(completed)
+
+        advanceTimeBy(64.seconds)
+        runCurrent()
+        assertFalse(completed) // the hint has not fully elapsed yet
+
+        advanceTimeBy(1.seconds)
+        runCurrent()
+        assertTrue(completed)
+        job.join()
+    }
+
+    @Test
     fun `acquire is immediate once the injected clock has passed the interval`() = runTest {
         val clock = ManualClock(Instant.fromEpochMilliseconds(0))
         val limiter = CarrierRateLimiter(minInterval = 5.seconds, clock = clock)

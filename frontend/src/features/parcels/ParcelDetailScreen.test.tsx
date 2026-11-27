@@ -166,6 +166,31 @@ describe("parcel detail screen", () => {
     await waitFor(() => expect(eventsCalls).toBeGreaterThan(1));
   });
 
+  it("shows the throttled chip and disables manual refresh with the retry time while the carrier rate-limits", async () => {
+    const retryAt = new Date(Date.now() + 10 * 60 * 1000);
+    const parcel = makeParcel({
+      lastCheckError: "carrier rate limit hit (retry after 600s), data from 2026-11-26T10:00:00Z",
+      lastCheckErrorCode: "rate_limited",
+      rateLimitedUntil: retryAt.toISOString(),
+    });
+    mswServer.use(
+      http.get("*/api/v1/parcels/p1", () => HttpResponse.json(parcel)),
+      http.get("*/api/v1/parcels/p1/events", () => HttpResponse.json([])),
+    );
+    renderDetail("p1");
+
+    expect(await screen.findByText(/carrier is rate-limiting checks/i)).toBeInTheDocument();
+    const button = await screen.findByRole("button", { name: /rate-limited by carrier/i });
+    expect(button).toBeDisabled();
+    const expectedTime = retryAt.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    expect(button).toHaveTextContent(`retry available at ${expectedTime}`);
+    expect(screen.queryByText(/carrier rate limit hit/i)).not.toBeInTheDocument();
+  });
+
   it("shows the waiting-for-first-scan empty state for a pending parcel with no events", async () => {
     const parcel = makeParcel({
       id: "p2",

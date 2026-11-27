@@ -447,6 +447,11 @@ button:disabled {
   color: var(--accent);
 }
 
+.parcel-throttled {
+  margin: 0;
+  align-self: flex-start;
+}
+
 .confirm-delete {
   display: grid;
   gap: 0.5rem;

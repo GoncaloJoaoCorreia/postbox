@@ -79,12 +79,16 @@ class ParcelNotFound(val parcelId: String) : Exception("No parcel with this id e
  * is refreshed. DELIVERED parcels skip refresh once [RefreshSettings.deliveredGrace] has
  * passed since their last check. In-flight carrier probes are capped at
  * [RefreshSettings.maxConcurrentProbes] while each carrier's own rate limiter is always
- * respected, and every probe is bounded by the carrier's configured request timeout, so
- * one hanging carrier delays nothing beyond its own timeout. A failed probe (error or
- * timeout) leaves the cached data untouched and marks the parcel with a soft
- * "carrier unreachable, data from {time}" indicator. A [CarrierError.NeedsMetadata] probe
- * is not a failure: it is not counted as a check (lastCheckedAt and lastCheckError stay
- * untouched) and the missing fields are reported to the caller instead.
+ * respected (adapters pace themselves inside `track`), and every probe is bounded by the
+ * carrier's configured request timeout — the limiter wait happens inside that timeout, so
+ * one hanging or throttled carrier delays nothing beyond its own timeout. A failed probe
+ * (error or timeout) leaves the cached data untouched and marks the parcel with a soft
+ * "carrier unreachable, data from {time}" indicator. A [CarrierError.RateLimited] probe
+ * backs the carrier's limiter off by its `Retry-After` hint and marks the parcel with the
+ * structured `rate_limited` code plus `rate_limited_until` instead. A
+ * [CarrierError.NeedsMetadata] probe is not a failure: it is not counted as a check
+ * (lastCheckedAt and lastCheckError stay untouched) and the missing fields are reported
+ * to the caller instead.
  */
 class DefaultRefreshService(
     private val parcels: ParcelRepository,
@@ -133,49 +137,69 @@ class DefaultRefreshService(
     private suspend fun refreshParcel(parcel: ParcelRecord): ParcelRecord {
         val carrier = parcel.carrier?.let(CarrierId::fromId) ?: return parcel
         val adapter = registry.lookup(carrier) ?: return markUnreachable(parcel)
-        val result = probe(carrier, adapter, parcel) ?: return markUnreachable(parcel)
-        dbMutex.withLock {
-            for (event in result.events) {
-                withContext(Dispatchers.IO) {
-                    parcels.addEventForUser(
-                        userId = parcel.userId,
-                        parcelId = parcel.id,
-                        occurredAt = isoUtc(event.occurredAt),
-                        status = event.status.name,
-                        description = event.description,
-                        location = event.location,
-                        raw = rawEventJson(event),
-                    )
+        return when (val outcome = probe(carrier, adapter, parcel)) {
+            is ProbeOutcome.Success -> {
+                dbMutex.withLock {
+                    for (event in outcome.result.events) {
+                        withContext(Dispatchers.IO) {
+                            parcels.addEventForUser(
+                                userId = parcel.userId,
+                                parcelId = parcel.id,
+                                occurredAt = isoUtc(event.occurredAt),
+                                status = event.status.name,
+                                description = event.description,
+                                location = event.location,
+                                raw = rawEventJson(event),
+                            )
+                        }
+                    }
                 }
+                persist(
+                    parcel,
+                    status = outcome.result.status.name,
+                    lastCheckedAt = isoUtc(clock.now()),
+                    lastCheckError = null,
+                    lastCheckErrorCode = null,
+                    rateLimitedUntil = null,
+                    estimatedDeliveryAt = outcome.result.eta?.let(::isoUtc),
+                )
             }
+            is ProbeOutcome.RateLimited -> markRateLimited(parcel, outcome.retryAfter)
+            ProbeOutcome.Unreachable -> markUnreachable(parcel)
         }
-        return persist(
-            parcel,
-            status = result.status.name,
-            lastCheckedAt = isoUtc(clock.now()),
-            lastCheckError = null,
-            estimatedDeliveryAt = result.eta?.let(::isoUtc),
-        )
     }
 
-    private suspend fun probe(carrier: CarrierId, adapter: CarrierAdapter, parcel: ParcelRecord): TrackingResult? {
+    private suspend fun probe(carrier: CarrierId, adapter: CarrierAdapter, parcel: ParcelRecord): ProbeOutcome {
         val metadata = parcel.carrierMetadata
             ?.let { Json.decodeFromString<Map<String, String>>(it) }
             ?: emptyMap()
         val timeout = probeTimeouts[carrier] ?: DEFAULT_PROBE_TIMEOUT
         return try {
-            rateLimiters[carrier]?.acquire()
-            probeSlots.withPermit {
+            val result = probeSlots.withPermit {
                 withTimeoutOrNull(timeout) { adapter.track(parcel.trackingNumber, metadata) }
             }
+            if (result != null) ProbeOutcome.Success(result) else ProbeOutcome.Unreachable
         } catch (e: CancellationException) {
             throw e
         } catch (e: CarrierError.NeedsMetadata) {
             throw e
+        } catch (e: CarrierError.RateLimited) {
+            log.info(
+                "Carrier '{}' rate-limited the probe for parcel {}, backing off for {}",
+                carrier.id, parcel.id, e.retryAfter,
+            )
+            rateLimiters[carrier]?.backOff(e.retryAfter)
+            ProbeOutcome.RateLimited(e.retryAfter)
         } catch (e: Exception) {
             log.warn("Carrier '{}' probe for parcel {} failed: {}", carrier.id, parcel.id, e.message)
-            null
+            ProbeOutcome.Unreachable
         }
+    }
+
+    private sealed interface ProbeOutcome {
+        data class Success(val result: TrackingResult) : ProbeOutcome
+        data object Unreachable : ProbeOutcome
+        data class RateLimited(val retryAfter: Duration) : ProbeOutcome
     }
 
     private suspend fun markUnreachable(parcel: ParcelRecord): ParcelRecord {
@@ -185,6 +209,22 @@ class DefaultRefreshService(
             status = parcel.status,
             lastCheckedAt = isoUtc(clock.now()),
             lastCheckError = "carrier unreachable, $dataFrom",
+            lastCheckErrorCode = "carrier_unreachable",
+            rateLimitedUntil = null,
+            estimatedDeliveryAt = parcel.estimatedDeliveryAt,
+        )
+    }
+
+    private suspend fun markRateLimited(parcel: ParcelRecord, retryAfter: Duration): ParcelRecord {
+        val now = clock.now()
+        val dataFrom = parcel.lastCheckedAt?.let { "data from $it" } ?: "no carrier data yet"
+        return persist(
+            parcel,
+            status = parcel.status,
+            lastCheckedAt = isoUtc(now),
+            lastCheckError = "carrier rate limit hit (retry after ${retryAfter.inWholeSeconds}s), $dataFrom",
+            lastCheckErrorCode = "rate_limited",
+            rateLimitedUntil = isoUtc(now + retryAfter),
             estimatedDeliveryAt = parcel.estimatedDeliveryAt,
         )
     }
@@ -194,6 +234,8 @@ class DefaultRefreshService(
         status: String,
         lastCheckedAt: String?,
         lastCheckError: String?,
+        lastCheckErrorCode: String?,
+        rateLimitedUntil: String?,
         estimatedDeliveryAt: String?,
     ): ParcelRecord {
         return dbMutex.withLock {
@@ -209,6 +251,8 @@ class DefaultRefreshService(
                     lastCheckedAt = lastCheckedAt,
                     archivedAt = parcel.archivedAt,
                     lastCheckError = lastCheckError,
+                    lastCheckErrorCode = lastCheckErrorCode,
+                    rateLimitedUntil = rateLimitedUntil,
                     estimatedDeliveryAt = estimatedDeliveryAt,
                 )
                 parcels.findParcelForUser(parcel.userId, parcel.id)!!

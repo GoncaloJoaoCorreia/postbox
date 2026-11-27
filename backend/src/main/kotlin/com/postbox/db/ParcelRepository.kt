@@ -24,6 +24,8 @@ data class ParcelRecord(
     val carrierMetadata: String?,
     val lastCheckedAt: String?,
     val lastCheckError: String?,
+    val lastCheckErrorCode: String?,
+    val rateLimitedUntil: String?,
     val estimatedDeliveryAt: String?,
     val createdAt: String,
     val archivedAt: String?,
@@ -87,6 +89,8 @@ class ParcelRepository(private val db: Database) {
             carrierMetadata = carrierMetadata,
             lastCheckedAt = lastCheckedAt,
             lastCheckError = null,
+            lastCheckErrorCode = null,
+            rateLimitedUntil = null,
             estimatedDeliveryAt = estimatedDeliveryAt,
             createdAt = createdAt,
             archivedAt = null,
@@ -116,6 +120,8 @@ class ParcelRepository(private val db: Database) {
         lastCheckedAt: String?,
         archivedAt: String?,
         lastCheckError: String?,
+        lastCheckErrorCode: String?,
+        rateLimitedUntil: String?,
         estimatedDeliveryAt: String?,
     ): Int = dbQuery(db) {
         Parcels.update({ (Parcels.id eq parcelId) and (Parcels.userId eq userId) }) {
@@ -127,6 +133,8 @@ class ParcelRepository(private val db: Database) {
             it[Parcels.lastCheckedAt] = lastCheckedAt
             it[Parcels.archivedAt] = archivedAt
             it[Parcels.lastCheckError] = lastCheckError
+            it[Parcels.lastCheckErrorCode] = lastCheckErrorCode
+            it[Parcels.rateLimitedUntil] = rateLimitedUntil
             it[Parcels.estimatedDeliveryAt] = estimatedDeliveryAt
         }
     }
@@ -220,6 +228,8 @@ class ParcelRepository(private val db: Database) {
         carrierMetadata = row[Parcels.carrierMetadata],
         lastCheckedAt = row[Parcels.lastCheckedAt],
         lastCheckError = row[Parcels.lastCheckError],
+        lastCheckErrorCode = row[Parcels.lastCheckErrorCode],
+        rateLimitedUntil = row[Parcels.rateLimitedUntil],
         estimatedDeliveryAt = row[Parcels.estimatedDeliveryAt],
         createdAt = row[Parcels.createdAt],
         archivedAt = row[Parcels.archivedAt],
