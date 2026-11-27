@@ -5,6 +5,7 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.HttpRequestData
+import io.ktor.client.request.HttpResponseData
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -28,11 +29,11 @@ class DpdAdapterTest {
         requireNotNull(javaClass.getResource("/fixtures/$name")) { "missing fixture $name" }.readText()
 
     private fun adapter(
-        handler: suspend MockRequestHandleScope.(HttpRequestData) -> io.ktor.client.statement.HttpResponse,
+        handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData,
         seen: MutableList<HttpRequestData>? = null,
         withFirebase: Boolean = true,
     ): DpdAdapter {
-        val engine: suspend MockRequestHandleScope.(HttpRequestData) -> io.ktor.client.statement.HttpResponse =
+        val engine: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData =
             { request ->
                 seen?.add(request)
                 when {
@@ -68,7 +69,7 @@ class DpdAdapterTest {
         adapter({ respond(body, status, htmlHeaders) }, seen = seen)
 
     private fun nlAdapter(
-        details: suspend MockRequestHandleScope.(HttpRequestData) -> io.ktor.client.statement.HttpResponse,
+        details: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData,
         seen: MutableList<HttpRequestData>? = null,
         withFirebase: Boolean = true,
     ) = adapter(details, seen = seen, withFirebase = withFirebase)
@@ -76,7 +77,7 @@ class DpdAdapterTest {
     private fun nlDetails(
         body: String,
         status: HttpStatusCode = HttpStatusCode.OK,
-    ): suspend MockRequestHandleScope.(HttpRequestData) -> io.ktor.client.statement.HttpResponse =
+    ): suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData =
         { respond(body, status, jsonHeaders) }
 
     @Test
