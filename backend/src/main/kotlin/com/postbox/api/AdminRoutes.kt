@@ -2,6 +2,7 @@ package com.postbox.api
 
 import com.postbox.auth.PasswordHasher
 import com.postbox.auth.PostboxPrincipal
+import com.postbox.db.DeviceSessionRepository
 import com.postbox.db.UserRepository
 import com.postbox.db.UserRole
 import io.ktor.http.HttpStatusCode
@@ -27,7 +28,7 @@ internal suspend fun ApplicationCall.requireAdmin(): Boolean {
     return true
 }
 
-fun Route.adminRoutes(users: UserRepository, hasher: PasswordHasher) {
+fun Route.adminRoutes(users: UserRepository, hasher: PasswordHasher, sessions: DeviceSessionRepository) {
     route("/admin") {
         get("/users") {
             if (!call.requireAdmin()) return@get
@@ -96,7 +97,10 @@ fun Route.adminRoutes(users: UserRepository, hasher: PasswordHasher) {
                 return@patch
             }
             if (req.isActive != null && req.isActive != existing.isActive) {
-                withContext(Dispatchers.IO) { users.setActive(id, req.isActive) }
+                withContext(Dispatchers.IO) {
+                    users.setActive(id, req.isActive)
+                    if (!req.isActive) sessions.revokeAllForUser(id)
+                }
             }
             if (req.newPassword != null) {
                 withContext(Dispatchers.IO) { users.updatePasswordHash(id, hasher.hash(req.newPassword)) }

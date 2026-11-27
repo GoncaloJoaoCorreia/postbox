@@ -82,10 +82,39 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Log in and receive a bearer token
-         * @description The 401 response is identical for unknown email, wrong password and deactivated accounts
+         * Log in and receive a bearer token plus a refresh token
+         * @description The 401 response is identical for unknown email, wrong password and deactivated
+         *     accounts. The 200 response carries the 24h access JWT, a long-lived
+         *     `refreshToken` and the `sessionId` of the newly created device session — send
+         *     `deviceName` to label the session (mobile clients); rotate the refresh token
+         *     via `POST /api/v1/auth/refresh`.
          */
         post: operations["postLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate a refresh token into a new access token + refresh token
+         * @description Present a refresh token received from login (or a previous refresh). The
+         *     response carries a fresh 24h access JWT and a rotated refresh token for the
+         *     same `sessionId`; the presented refresh token is invalidated. Replaying an
+         *     already-rotated token is detected and revokes the whole session; revoked,
+         *     expired or unknown tokens answer 401. The refresh-token TTL is ~90 days and
+         *     slides: every successful refresh extends it.
+         */
+        post: operations["postRefresh"];
         delete?: never;
         options?: never;
         head?: never;
@@ -106,8 +135,49 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Change the caller's own password */
+        /**
+         * Change the caller's own password
+         * @description Revokes all of the caller's device sessions — every refresh token answers 401 afterwards
+         */
         patch: operations["patchMe"];
+        trace?: never;
+    };
+    "/api/v1/me/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's device sessions (logins), oldest first */
+        get: operations["listDeviceSessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/devices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke one of the caller's device sessions
+         * @description Marks the session revoked — its refresh token answers 401 from then on.
+         *     Ids of other users' sessions return 404 (never 403), like parcel ids.
+         */
+        delete: operations["revokeDeviceSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/admin/users": {
@@ -141,7 +211,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Deactivate/reactivate an account and/or reset its password */
+        /**
+         * Deactivate/reactivate an account and/or reset its password
+         * @description Deactivation revokes all of the target user's device sessions — every refresh token answers 401 afterwards
+         */
         patch: operations["updateUser"];
         trace?: never;
     };
@@ -310,10 +383,41 @@ export interface components {
             /** Format: email */
             email: string;
             password: string;
+            /** @description Optional label for the device session created by this login (mobile clients), e.g. "Pixel 9"; defaults to "Unknown device" */
+            deviceName?: string;
         };
         LoginResponse: {
-            /** @description HS256 JWT */
+            /** @description HS256 JWT access token (24h TTL) */
             token: string;
+            /** @description Opaque refresh token, stored server-side only as a SHA-256 hash; ~90-day sliding TTL, rotated on every `POST /api/v1/auth/refresh` */
+            refreshToken: string;
+            /**
+             * Format: uuid
+             * @description The device session this refresh token belongs to — list/revoke via `/api/v1/me/devices`
+             */
+            sessionId: string;
+        };
+        RefreshRequest: {
+            /** @description The refresh token received from login or a previous refresh */
+            refreshToken: string;
+        };
+        DeviceSession: {
+            /** Format: uuid */
+            id: string;
+            /** @description The label supplied at login ("Unknown device" when omitted) */
+            deviceName: string;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Last successful refresh of this session
+             */
+            lastUsedAt: string;
+            /**
+             * Format: date-time
+             * @description When the session was revoked (device revoke, password change, admin deactivation, or refresh-token reuse detection); null while active
+             */
+            revokedAt: string | null;
         };
         /** @enum {string} */
         UserRole: "USER" | "ADMIN";
@@ -480,7 +584,7 @@ export interface components {
                 "application/json": components["schemas"]["ErrorResponse"];
             };
         };
-        /** @description Missing or invalid bearer token, or invalid credentials */
+        /** @description Missing or invalid bearer token, invalid credentials, or an invalid/expired/revoked refresh token */
         Unauthorized: {
             headers: {
                 [name: string]: unknown;
@@ -658,7 +762,33 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The signed JWT */
+            /** @description The signed JWT, the refresh token and the device session id */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    postRefresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshRequest"];
+            };
+        };
+        responses: {
+            /** @description The new access token and the rotated refresh token */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -713,6 +843,49 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    listDeviceSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's device sessions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceSession"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    revokeDeviceSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The session is revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     listUsers: {

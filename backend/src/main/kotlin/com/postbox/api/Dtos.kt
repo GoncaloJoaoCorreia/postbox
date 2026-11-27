@@ -1,6 +1,7 @@
 package com.postbox.api
 
 import com.postbox.carrier.MetadataField
+import com.postbox.db.DeviceSessionRecord
 import com.postbox.db.ParcelEventRecord
 import com.postbox.db.ParcelRecord
 import com.postbox.db.UserRecord
@@ -16,10 +17,26 @@ data class SetupStatusResponse(val setupPending: Boolean)
 data class SetupRequest(val email: String, val password: String)
 
 @Serializable
-data class LoginRequest(val email: String, val password: String)
+data class LoginRequest(val email: String, val password: String, val deviceName: String? = null)
 
 @Serializable
-data class LoginResponse(val token: String)
+data class LoginResponse(
+    val token: String,
+    val refreshToken: String,
+    val sessionId: String,
+)
+
+@Serializable
+data class RefreshRequest(val refreshToken: String)
+
+@Serializable
+data class DeviceSessionResponse(
+    val id: String,
+    val deviceName: String,
+    val createdAt: String,
+    val lastUsedAt: String,
+    val revokedAt: String?,
+)
 
 @Serializable
 data class CreateUserRequest(
@@ -133,6 +150,14 @@ fun UserRecord.toResponse() = UserResponse(
     role = role,
     isActive = isActive,
     createdAt = createdAt,
+)
+
+fun DeviceSessionRecord.toResponse() = DeviceSessionResponse(
+    id = id,
+    deviceName = deviceName,
+    createdAt = createdAt,
+    lastUsedAt = lastUsedAt,
+    revokedAt = revokedAt,
 )
 
 fun ParcelEventRecord.toResponse() = ParcelEventResponse(

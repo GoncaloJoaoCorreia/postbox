@@ -6,12 +6,17 @@ info:
     The stable REST API the Postbox SPA talks to (and the mobile app later).
     API-first: this contract is versioned under `/api/v1` and must not break casually.
 
-    Authentication is bearer-token based everywhere except first-run setup and login:
-    `Authorization: Bearer <token>` with a HS256 JWT. All error responses share one
-    envelope: `{"error": {"code": "...", "message": "..."}}` — including 401 for
-    missing/invalid tokens.
+    Authentication is bearer-token based everywhere except first-run setup, login and
+    token refresh: `Authorization: Bearer <token>` with a HS256 JWT (24h TTL). For
+    long-lived clients (mobile), login also returns an opaque `refreshToken` plus the
+    `sessionId` of the created device session; `POST /api/v1/auth/refresh` rotates it
+    (replaying an already-rotated token revokes the whole session) with a ~90-day
+    sliding TTL, and `/api/v1/me/devices` lists/revokes the caller's sessions. All
+    error responses share one envelope: `{"error": {"code": "...", "message": "..."}}`
+    — including 401 for missing/invalid tokens.
 
-    Parcel ids of other users return 404 (never 403) so ids cannot be enumerated.
+    Parcel ids of other users return 404 (never 403) so ids cannot be enumerated;
+    the same holds for other users' device-session ids.
 servers:
   - url: /
 tags:
@@ -94,8 +99,13 @@ paths:
     post:
       tags: [auth]
       operationId: postLogin
-      summary: Log in and receive a bearer token
-      description: The 401 response is identical for unknown email, wrong password and deactivated accounts
+      summary: Log in and receive a bearer token plus a refresh token
+      description: |
+        The 401 response is identical for unknown email, wrong password and deactivated
+        accounts. The 200 response carries the 24h access JWT, a long-lived
+        `refreshToken` and the `sessionId` of the newly created device session — send
+        `deviceName` to label the session (mobile clients); rotate the refresh token
+        via `POST /api/v1/auth/refresh`.
       security: []
       requestBody:
         required: true
@@ -105,7 +115,37 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: The signed JWT
+          description: The signed JWT, the refresh token and the device session id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/auth/refresh:
+    post:
+      tags: [auth]
+      operationId: postRefresh
+      summary: Rotate a refresh token into a new access token + refresh token
+      description: |
+        Present a refresh token received from login (or a previous refresh). The
+        response carries a fresh 24h access JWT and a rotated refresh token for the
+        same `sessionId`; the presented refresh token is invalidated. Replaying an
+        already-rotated token is detected and revokes the whole session; revoked,
+        expired or unknown tokens answer 401. The refresh-token TTL is ~90 days and
+        slides: every successful refresh extends it.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: The new access token and the rotated refresh token
           content:
             application/json:
               schema:
@@ -130,6 +170,7 @@ paths:
       tags: [me]
       operationId: patchMe
       summary: Change the caller's own password
+      description: Revokes all of the caller's device sessions — every refresh token answers 401 afterwards
       requestBody:
         required: true
         content:
@@ -143,6 +184,39 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/v1/me/devices:
+    get:
+      tags: [me]
+      operationId: listDeviceSessions
+      summary: The caller's device sessions (logins), oldest first
+      responses:
+        '200':
+          description: The caller's device sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceSession'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/me/devices/{id}:
+    delete:
+      tags: [me]
+      operationId: revokeDeviceSession
+      summary: Revoke one of the caller's device sessions
+      description: |
+        Marks the session revoked — its refresh token answers 401 from then on.
+        Ids of other users' sessions return 404 (never 403), like parcel ids.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: The session is revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/admin/users:
     get:
       tags: [admin]
@@ -191,6 +265,7 @@ paths:
       tags: [admin]
       operationId: updateUser
       summary: Deactivate/reactivate an account and/or reset its password
+      description: Deactivation revokes all of the target user's device sessions — every refresh token answers 401 afterwards
       parameters:
         - $ref: '#/components/parameters/Id'
       requestBody:
@@ -456,7 +531,7 @@ components:
               code: invalid-tracking-number
               message: Tracking number must be 1-64 characters of letters, digits or hyphens
     Unauthorized:
-      description: Missing or invalid bearer token, or invalid credentials
+      description: Missing or invalid bearer token, invalid credentials, or an invalid/expired/revoked refresh token
       content:
         application/json:
           schema:
@@ -550,13 +625,53 @@ components:
           format: email
         password:
           type: string
+        deviceName:
+          type: string
+          maxLength: 120
+          description: Optional label for the device session created by this login (mobile clients), e.g. "Pixel 9"; defaults to "Unknown device"
     LoginResponse:
       type: object
-      required: [token]
+      required: [token, refreshToken, sessionId]
       properties:
         token:
           type: string
-          description: HS256 JWT
+          description: HS256 JWT access token (24h TTL)
+        refreshToken:
+          type: string
+          description: Opaque refresh token, stored server-side only as a SHA-256 hash; ~90-day sliding TTL, rotated on every `POST /api/v1/auth/refresh`
+        sessionId:
+          type: string
+          format: uuid
+          description: The device session this refresh token belongs to — list/revoke via `/api/v1/me/devices`
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          description: The refresh token received from login or a previous refresh
+    DeviceSession:
+      type: object
+      required: [id, deviceName, createdAt, lastUsedAt, revokedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        deviceName:
+          type: string
+          description: The label supplied at login ("Unknown device" when omitted)
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+          description: Last successful refresh of this session
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the session was revoked (device revoke, password change, admin deactivation, or refresh-token reuse detection); null while active
     UserRole:
       type: string
       enum: [USER, ADMIN]

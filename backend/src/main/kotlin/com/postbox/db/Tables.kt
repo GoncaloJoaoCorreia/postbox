@@ -43,6 +43,24 @@ object Parcels : Table("parcels") {
     }
 }
 
+object DeviceSessions : Table("device_sessions") {
+    val id = text("id")
+    val userId = text("user_id").references(Users.id)
+    val tokenHash = text("token_hash").uniqueIndex()
+    val previousTokenHash = text("previous_token_hash").nullable().uniqueIndex()
+    val deviceName = text("device_name")
+    val createdAt = text("created_at")
+    val lastUsedAt = text("last_used_at")
+    val expiresAt = text("expires_at")
+    val revokedAt = text("revoked_at").nullable()
+
+    override val primaryKey = PrimaryKey(id)
+
+    init {
+        index(customIndexName = "idx_device_sessions_user_id", isUnique = false, userId)
+    }
+}
+
 object ParcelEvents : Table("parcel_events") {
     val id = text("id")
     val parcelId = text("parcel_id").references(Parcels.id)
