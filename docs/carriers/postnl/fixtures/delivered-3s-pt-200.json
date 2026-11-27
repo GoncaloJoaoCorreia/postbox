@@ -1,0 +1,395 @@
+{
+  "colli": {
+    "3SXXXX00000000": {
+      "barcode": "3SXXXX00000000",
+      "partnerBarcode": "000000000000",
+      "identification": "3SXXXX00000000-PT-0000-000",
+      "deliveryShipmentIdentification": null,
+      "effectiveDate": "2026-11-12T00:00:00+01:00",
+      "context": {
+        "countryIsoNumber": 0,
+        "shipmentType": "Parcel"
+      },
+      "description": "XXNL000000000/000000",
+      "emailHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "phoneHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "deliveryAddressType": "Recipient",
+      "recipient": {
+        "names": {
+          "companyName": null,
+          "personName": "REDACTED"
+        },
+        "address": {
+          "street": "REDACTED",
+          "houseNumber": "0",
+          "houseNumberSuffix": "XX",
+          "postalCode": "0000-000",
+          "town": "REDACTED",
+          "country": "PT"
+        },
+        "international": {
+          "building": null,
+          "region": "REDACTED",
+          "district": null,
+          "departmentName": null,
+          "doorCode": null,
+          "floor": null,
+          "deliveryInstruction": null
+        }
+      },
+      "sender": {
+        "names": {
+          "companyName": "REDACTED",
+          "personName": "REDACTED"
+        },
+        "address": {
+          "street": "REDACTED",
+          "houseNumber": "0",
+          "houseNumberSuffix": null,
+          "postalCode": "0000XX",
+          "town": "REDACTED",
+          "country": "NL"
+        },
+        "international": {
+          "building": null,
+          "region": null,
+          "district": null,
+          "departmentName": null,
+          "doorCode": null,
+          "floor": null,
+          "deliveryInstruction": null
+        }
+      },
+      "accountId": null,
+      "isValidated": null,
+      "isMatched": null,
+      "deliveryAddress": {
+        "names": {
+          "companyName": null,
+          "personName": "REDACTED"
+        },
+        "address": {
+          "street": "REDACTED",
+          "houseNumber": "0",
+          "houseNumberSuffix": "XX",
+          "postalCode": "0000-000",
+          "town": "REDACTED",
+          "country": "PT"
+        },
+        "international": {
+          "building": null,
+          "region": "REDACTED",
+          "district": null,
+          "departmentName": null,
+          "doorCode": null,
+          "floor": null,
+          "deliveryInstruction": null
+        }
+      },
+      "retailDeliveryLocation": null,
+      "eta": {
+        "type": "MultipleDaySpan",
+        "start": "2026-11-17T00:00:00+01:00",
+        "end": "2026-11-18T23:59:59+01:00",
+        "minutesOverdue": null
+      },
+      "isDelivered": true,
+      "isAtRetailLocation": false,
+      "isPickedUpAtRetailLocation": false,
+      "isAbroadRetailLocation": false,
+      "beforeFirstDeliveryAttempt": true,
+      "expectedReturnDate": null,
+      "deliveryDate": "2026-11-17T11:36:00+01:00",
+      "isDeliveryDateChanged": false,
+      "routeInformation": null,
+      "isReturnShipment": false,
+      "hasProofOfDelivery": false,
+      "details": {
+        "cashOnDelivery": null,
+        "productCode": "4952",
+        "isBelgianProduct": true,
+        "productOptionNotifications": [],
+        "businessPartnerCode": "XXXX",
+        "businessPartnerNumber": "00000000",
+        "dimensions": {
+          "height": 68.0,
+          "width": 220.0,
+          "depth": 285.0,
+          "weight": 380.0
+        },
+        "deliveryPreferences": {
+          "hasStandardDeliveryPlace": false,
+          "hasNotAtHomeDeliveryPlace": false,
+          "hasRetailDeliveryPlace": false,
+          "isTooBigForRetail": false,
+          "hasPbaDeliveryPlace": false,
+          "hasStandardHomeAddressDeliveryPreference": false,
+          "hasStandardRetailDeliveryPreference": false,
+          "hasStandardPbaDeliveryPreference": false,
+          "hasStandardParcelLockerAtHomeDeliveryPreference": false,
+          "hasStandardSafePlaceDeliveryPreference": false,
+          "hasNotAtHomeNeighborsDeliveryPreference": false,
+          "hasNotAtHomeRetailDeliveryPreference": false,
+          "hasNotAtHomeSafePlaceDeliveryPreference": false,
+          "hasNotAtHomePbaDeliveryPreference": false
+        },
+        "productOptions": [
+          {
+            "optionCode": "123",
+            "characteristicCode": "123"
+          }
+        ],
+        "isRegistered": false,
+        "isInsured": true
+      },
+      "statusPhase": {
+        "index": 4,
+        "message": "Yes! Your shipment has been delivered to the recipient",
+        "route": null
+      },
+      "lastObservation": "2026-11-17T11:36:00+01:00",
+      "extraInformation": [],
+      "observations": [
+        {
+          "observationDate": "2026-11-17T08:30:00+01:00",
+          "observationCode": "Y05",
+          "description": "Your shipment is on its way to the recipient"
+        },
+        {
+          "observationDate": "2026-11-16T13:45:00+01:00",
+          "observationCode": "X08",
+          "description": "Your parcel's at a sorting centre in the destination country"
+        },
+        {
+          "observationDate": "2026-11-16T08:10:00+01:00",
+          "observationCode": "Y05",
+          "description": "Your shipment is on its way to the recipient"
+        },
+        {
+          "observationDate": "2026-11-14T13:11:50.661+01:00",
+          "observationCode": "Q12",
+          "description": "Your parcel has crossed the border"
+        },
+        {
+          "observationDate": "2026-11-13T03:03:00+01:00",
+          "observationCode": "X02",
+          "description": "Yes! Your shipment has arrived in the destination country"
+        },
+        {
+          "observationDate": "2026-11-12T19:31:50.793+01:00",
+          "observationCode": "J06",
+          "description": "Shipment sorted in sorting centre"
+        },
+        {
+          "observationDate": "2026-11-12T19:31:11+01:00",
+          "observationCode": "B01",
+          "description": "Shipment received by PostNL"
+        },
+        {
+          "observationDate": "2026-11-12T19:30:13.52+01:00",
+          "observationCode": "J06",
+          "description": "Shipment sorted in sorting centre"
+        },
+        {
+          "observationDate": "2026-11-12T17:34:24+01:00",
+          "observationCode": "B01",
+          "description": "Shipment received by PostNL"
+        },
+        {
+          "observationDate": "2026-11-12T14:15:41.913+01:00",
+          "observationCode": "A01",
+          "description": "Shipment expected, but not yet arrived or processed at PostNL"
+        }
+      ],
+      "previouslyRerouted": false,
+      "inReroutableState": false,
+      "rerouteOptions": {
+        "otherTimeFrame": null,
+        "otherTimeFrameAvailable": false,
+        "postOfficeDelivery": false,
+        "packstationDelivery": false,
+        "reroutingUnauthorized": false,
+        "safePlaceDelivery": false,
+        "pbaDelivery": false,
+        "postOfficeDeliveryIdinFlow": false,
+        "safePlaceDeliveryIdinFlow": false,
+        "pbaDeliveryIdinFlow": false,
+        "postOfficeDeliverySustainableOption": false,
+        "pbaSustainableOption": false,
+        "isOriginalRerouteOwner": false,
+        "unavailableReasons": [2]
+      },
+      "relatedCollos": [],
+      "analyticsInfo": {
+        "features": {
+          "none": "None"
+        },
+        "allObservations": [
+          {
+            "observationDate": "2026-11-12T14:15:41.913+01:00",
+            "observationCode": "A01",
+            "description": "Shipment expected, but not yet arrived or processed at PostNL"
+          },
+          {
+            "observationDate": "2026-11-12T14:19:56+01:00",
+            "observationCode": "A98",
+            "description": "Pre-alerted shipment enriched by PostNL management."
+          },
+          {
+            "observationDate": "2026-11-12T14:19:57.735+01:00",
+            "observationCode": "A95",
+            "description": "Delivery cannot be changed"
+          },
+          {
+            "observationDate": "2026-11-12T17:34:24+01:00",
+            "observationCode": "B01",
+            "description": "Shipment received by PostNL"
+          },
+          {
+            "observationDate": "2026-11-12T19:28:55+01:00",
+            "observationCode": "K50",
+            "description": "RCS notice"
+          },
+          {
+            "observationDate": "2026-11-12T19:30:13.52+01:00",
+            "observationCode": "J06",
+            "description": "Shipment sorted in sorting centre"
+          },
+          {
+            "observationDate": "2026-11-12T19:31:11+01:00",
+            "observationCode": "B01",
+            "description": "Shipment received by PostNL"
+          },
+          {
+            "observationDate": "2026-11-12T19:31:11+01:00",
+            "observationCode": "A04",
+            "description": "PIOS notice"
+          },
+          {
+            "observationDate": "2026-11-12T19:31:49.172+01:00",
+            "observationCode": "A95",
+            "description": "Delivery cannot be changed"
+          },
+          {
+            "observationDate": "2026-11-12T19:31:50.793+01:00",
+            "observationCode": "J06",
+            "description": "Shipment sorted in sorting centre"
+          },
+          {
+            "observationDate": "2026-11-13T03:03:00+01:00",
+            "observationCode": "X02",
+            "description": "Yes! Your shipment has arrived in the destination country"
+          },
+          {
+            "observationDate": "2026-11-13T08:38:02.791+01:00",
+            "observationCode": "Q11",
+            "description": "Parcel linked to packaging tool"
+          },
+          {
+            "observationDate": "2026-11-14T13:11:50.661+01:00",
+            "observationCode": "Q12",
+            "description": "Your parcel has crossed the border"
+          },
+          {
+            "observationDate": "2026-11-16T08:10:00+01:00",
+            "observationCode": "Y05",
+            "description": "Your shipment is on its way to the recipient"
+          },
+          {
+            "observationDate": "2026-11-16T13:45:00+01:00",
+            "observationCode": "X08",
+            "description": "Your parcel's at a sorting centre in the destination country"
+          },
+          {
+            "observationDate": "2026-11-17T08:30:00+01:00",
+            "observationCode": "Y05",
+            "description": "Your shipment is on its way to the recipient"
+          },
+          {
+            "observationDate": "2026-11-17T11:36:00+01:00",
+            "observationCode": "Z01",
+            "description": "Yes! Your shipment has been delivered to the recipient"
+          }
+        ],
+        "productOptions": [
+          {
+            "optionCode": "123",
+            "characteristicCode": "123"
+          }
+        ],
+        "shipmentStage": "Delivered",
+        "inAdvancePeriod": null,
+        "reroutableType": null,
+        "validationStatusInfo": {
+          "isValidated": false
+        }
+      },
+      "phaseBlock": {
+        "phaseContent": null,
+        "phaseAction": null,
+        "relatedFaqs": [
+          {
+            "Title": {
+              "TranslationKey": "TrackAndTrace.Faq.InternationalStatus.Delivered"
+            },
+            "SubText": {
+              "TranslationKey": "TrackAndTrace.Faq.InternationalStatus.Phase.Recipient"
+            }
+          }
+        ]
+      },
+      "showRetailMap": false,
+      "linkToNetworkPartner": "https://gts.sending.es/fgts/pub/locNumSeguimiento.seam?cliente=00000000&localizador=000000000000",
+      "networkPartnerName": "REDACTED (PT last-mile partner)",
+      "networkPartnerCountry": "Portugal",
+      "customsFees": null,
+      "customerFeedbackInfo": {
+        "showFeedbackOptions": false,
+        "feedbackGiven": false
+      },
+      "isInternational": true,
+      "internationalStatus": {
+        "isForeignShipment": true,
+        "phase": "DeliveredAtRecipient",
+        "delay": null
+      },
+      "showOriginalDeliveryAddress": false,
+      "alerts": [
+        {
+          "type": 3,
+          "message": "",
+          "suffixMessage": null,
+          "faq": null,
+          "title": "TrackAndTrace.Delivered",
+          "category": 10
+        }
+      ],
+      "firstMile": null,
+      "willBeReturnedAtRetail": false,
+      "retailPickupBarcode": "O3SXXXX00000000",
+      "returnPickupCancelled": false,
+      "uncertainRetailLocation": false,
+      "isSustainableDelivery": false,
+      "isSustainableOption": false,
+      "safePlaceFailure": null,
+      "isPba": false,
+      "isDeliveredAtPba": false,
+      "isPickedUpAtPba": false,
+      "isPincodeAtDoorShipment": false,
+      "isInPreAnnouncedStatus": false,
+      "pincodeStatus": null,
+      "floatingChatBot": null,
+      "shipmentAdvertisement": null,
+      "thirdPartyAdvertisements": null,
+      "isPostNLIDForPilotZipCodes": false,
+      "extraAtHome": null,
+      "canBePickedUpWithPostNLId": false,
+      "isShipmentAddressChanged": false,
+      "isPbaDelivery": false,
+      "isDelayed": false,
+      "showLastUpdateDate": true,
+      "temporaryShipment": null
+    }
+  },
+  "processed": "2026-11-27T01:10:30.2183212+01:00"
+}
