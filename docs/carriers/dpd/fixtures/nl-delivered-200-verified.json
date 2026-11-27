@@ -1,0 +1,173 @@
+{
+  "parcelNumber": "05220000000203",
+  "shipmentId": "05220000000203",
+  "status": {
+    "status": 5,
+    "description": "DELIVERED",
+    "deliveryType": "HOME",
+    "eventDateAndTime": "2026-11-14T16:02:00",
+    "eventDateAndTimeZoneId": "Europe/Amsterdam",
+    "city": null,
+    "countryCode": "NL",
+    "homeDelivery": true
+  },
+  "deliveryDate": "2026-11-14",
+  "parcelSearchType": "BY_PARCEL_NUMBER",
+  "fmpRedirectionPossibility": false,
+  "sender": {
+    "senderId": "SENDER0000000001",
+    "name": "Example Webshop BV",
+    "address": {
+      "streetName": "Sender Street",
+      "houseNumber": "1",
+      "zipCode": "1000AA",
+      "city": "Amsterdam",
+      "country": "NL"
+    }
+  },
+  "receiver": {
+    "name": "[REDACTED]",
+    "emailAddress": "recipient@example.invalid",
+    "phoneNumber": "+31000000000",
+    "address": {
+      "streetName": "Private Street",
+      "houseNumber": "7",
+      "zipCode": "1234AB",
+      "city": "Utrecht",
+      "country": "NL"
+    },
+    "geoPosition": {
+      "lat": 52.000001,
+      "lon": 5.000001
+    }
+  },
+  "weight": 1.4,
+  "product": "Example product",
+  "parcelHistory": [
+    {
+      "status": 1,
+      "description": "PARCEL_HANDED",
+      "deliveryType": "HOME",
+      "eventDateAndTime": "2026-11-12T18:05:12",
+      "eventDateAndTimeZoneId": "+01:00",
+      "city": "Amsterdam",
+      "countryCode": "NL",
+      "homeDelivery": true
+    },
+    {
+      "status": 3,
+      "description": "AT_DELIVERY_CENTER",
+      "deliveryType": "HOME",
+      "eventDateAndTime": "2026-11-13T21:26:00",
+      "eventDateAndTimeZoneId": "+01:00",
+      "city": "Utrecht",
+      "countryCode": "NL",
+      "homeDelivery": true
+    },
+    {
+      "status": 4,
+      "description": "PARCEL_OUT_FOR_DELIVERY",
+      "deliveryType": "HOME",
+      "eventDateAndTime": "2026-11-14T08:37:00",
+      "eventDateAndTimeZoneId": "+01:00",
+      "city": "Utrecht",
+      "countryCode": "NL",
+      "homeDelivery": true
+    },
+    {
+      "status": 5,
+      "description": "DELIVERED",
+      "deliveryType": "HOME",
+      "eventDateAndTime": "2026-11-14T16:02:00",
+      "eventDateAndTimeZoneId": "+01:00",
+      "city": "Utrecht",
+      "countryCode": "NL",
+      "homeDelivery": true
+    }
+  ],
+  "ratingModifiable": true,
+  "actionBoxStatus": "CANNOT_RETRIEVE_ACTIONS",
+  "parcelType": "INCOMING",
+  "type": "NORMAL",
+  "customerReference1": "[REDACTED]",
+  "refused": false,
+  "gttsZipCode": "1234AB",
+  "confirmation": "TRUE",
+  "returning": false,
+  "shipmentBUCode": "035",
+  "isPredictiveDate": false,
+  "parcelEvents": [
+    {
+      "time": "16:02:00",
+      "date": "2026-11-14",
+      "translation": "We received the proof of delivery",
+      "pudoId": null,
+      "pudoType": null,
+      "country": "UNDEFINED",
+      "buShortName": "DPD-NL",
+      "depotCountry": "NL",
+      "city": null,
+      "podUrl": "https://pod.example.invalid/tracking/pods?parcelNumber=05220000000203&date=2026-11-14",
+      "eventType": "DEYY",
+      "eventTypeText": "Delivery - Proof of delivery"
+    },
+    {
+      "time": "16:02:00",
+      "date": "2026-11-14",
+      "translation": "Your parcel has been delivered successfully",
+      "pudoId": null,
+      "pudoType": null,
+      "country": "NL",
+      "buShortName": "DPD-NL",
+      "depotCountry": "NL",
+      "city": "Utrecht",
+      "podUrl": null,
+      "eventType": "DEY",
+      "eventTypeText": "Delivery - Delivered"
+    },
+    {
+      "time": "08:37:00",
+      "date": "2026-11-14",
+      "translation": "Your parcel is out for delivery",
+      "pudoId": null,
+      "pudoType": null,
+      "country": "NL",
+      "buShortName": "DPD-NL",
+      "depotCountry": "NL",
+      "city": "Utrecht",
+      "podUrl": null,
+      "eventType": "DLO",
+      "eventTypeText": "Destination depot - Out for delivery"
+    },
+    {
+      "time": "21:26:00",
+      "date": "2026-11-13",
+      "translation": "Your parcel arrived at our delivery depot",
+      "pudoId": null,
+      "pudoType": null,
+      "country": "NL",
+      "buShortName": "DPD-NL",
+      "depotCountry": "NL",
+      "city": "Utrecht",
+      "podUrl": null,
+      "eventType": "DLI",
+      "eventTypeText": "Destination depot - Inbound"
+    },
+    {
+      "time": "18:05:12",
+      "date": "2026-11-12",
+      "translation": "Your parcel arrived at our depot",
+      "pudoId": null,
+      "pudoType": null,
+      "country": "NL",
+      "buShortName": "DPD-NL",
+      "depotCountry": "NL",
+      "city": "Amsterdam",
+      "podUrl": null,
+      "eventType": "ORI",
+      "eventTypeText": "Origin depot - In"
+    }
+  ],
+  "isMasterParcel": true,
+  "shipmentType": "SHIPMENT"
+}
