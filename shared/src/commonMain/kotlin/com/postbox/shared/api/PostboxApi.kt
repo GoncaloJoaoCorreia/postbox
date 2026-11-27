@@ -5,7 +5,6 @@ import com.postbox.shared.api.endpoints.DocsApi
 import com.postbox.shared.api.endpoints.MeApi
 import com.postbox.shared.api.endpoints.ParcelsApi
 import com.postbox.shared.api.endpoints.SetupApi
-import com.postbox.shared.api.infrastructure.ApiClient
 import com.postbox.shared.api.infrastructure.HttpResponse
 import com.postbox.shared.api.model.ChangePasswordRequest
 import com.postbox.shared.api.model.ErrorResponse
@@ -21,7 +20,9 @@ import com.postbox.shared.storage.TokenStorage
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -35,6 +36,9 @@ class PostboxApi(
     private val json = Json { ignoreUnknownKeys = true }
     private val httpClient = HttpClient(engine) {
         install(ContentNegotiation) { json(json) }
+        defaultRequest {
+            tokenStorage.accessToken()?.let { header(HttpHeaders.Authorization, "Bearer $it") }
+        }
     }
     private val base = baseUrl.trimEnd('/')
     private val parcelsApi = ParcelsApi(base, httpClient)
@@ -42,7 +46,6 @@ class PostboxApi(
     private val setupApi = SetupApi(base, httpClient)
     private val meApi = MeApi(base, httpClient)
     private val docsApi = DocsApi(base, httpClient)
-    private val authedApis: List<ApiClient> = listOf(parcelsApi, meApi)
     private val refreshMutex = Mutex()
 
     override suspend fun listParcels(): List<Parcel> =
@@ -89,10 +92,6 @@ class PostboxApi(
         httpClient.close()
     }
 
-    private fun applyAuth() {
-        tokenStorage.accessToken()?.let { token -> authedApis.forEach { it.setBearerToken(token) } }
-    }
-
     private suspend fun <T : Any> callPublic(block: suspend () -> HttpResponse<T>): T {
         val response = block()
         if (!response.success) throw response.toApiException()
@@ -100,13 +99,11 @@ class PostboxApi(
     }
 
     private suspend fun <T : Any> callAuthed(block: suspend () -> HttpResponse<T>): T {
-        applyAuth()
         val response = block()
         if (response.success) return response.body()
         if (response.status == 401) {
             val hadSession = tokenStorage.refreshToken() != null
             if (hadSession && refreshSilently()) {
-                applyAuth()
                 val retry = block()
                 if (retry.success) return retry.body()
                 throw retry.toApiException()
