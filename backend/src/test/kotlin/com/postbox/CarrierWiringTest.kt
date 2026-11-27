@@ -6,10 +6,12 @@ import com.postbox.carrier.CarrierId
 import com.postbox.carrier.CarrierRateLimiter
 import com.postbox.carrier.CarrierRegistry
 import com.postbox.carrier.DhlAdapter
+import com.postbox.carrier.DpdAdapter
 import com.postbox.carrier.EcoScootingAdapter
 import com.postbox.carrier.FakeCarrier
 import com.postbox.carrier.PaackAdapter
 import com.postbox.carrier.PostCttAdapter
+import com.postbox.carrier.PostNlAdapter
 import com.postbox.db.closeDatabase
 import com.postbox.db.freshTestDatabase
 import com.postbox.service.DetectionService
@@ -205,6 +207,30 @@ class CarrierWiringTest {
     }
 
     @Test
+    fun `PostNL adapter registers in the carrier registry when its carrier config block is present`() = testApplication {
+        val db = freshTestDatabase("carrier-wiring-postnl")
+        try {
+            application {
+                module(testConfig(carriers = setOf(CarrierId.POSTNL)), db)
+            }
+            startApplication()
+            val httpClients = application.dependencies.resolve<CarrierHttpClients>()
+            try {
+                val registry = application.dependencies.resolve<CarrierRegistry>()
+                val postnl = registry.lookup(CarrierId.POSTNL)
+                assertIs<PostNlAdapter>(postnl)
+                assertEquals(CarrierId.POSTNL, postnl?.carrier)
+                assertEquals(listOf("postcode"), postnl?.requiredMetadata?.keys?.toList())
+                assertEquals(listOf(postnl), registry.all)
+            } finally {
+                httpClients.close()
+            }
+        } finally {
+            closeDatabase(db)
+        }
+    }
+
+    @Test
     fun `Paack adapter registers in the carrier registry when its carrier config block is present`() = testApplication {
         val db = freshTestDatabase("carrier-wiring-paack")
         try {
@@ -244,6 +270,30 @@ class CarrierWiringTest {
                 assertEquals(CarrierId.ECOSCOOTING, ecoscooting?.carrier)
                 assertEquals(emptyMap(), ecoscooting?.requiredMetadata)
                 assertEquals(listOf(ecoscooting), registry.all)
+            } finally {
+                httpClients.close()
+            }
+        } finally {
+            closeDatabase(db)
+        }
+    }
+
+    @Test
+    fun `DPD adapter registers in the carrier registry when its carrier config block is present`() = testApplication {
+        val db = freshTestDatabase("carrier-wiring-dpd")
+        try {
+            application {
+                module(testConfig(carriers = setOf(CarrierId.DPD)), db)
+            }
+            startApplication()
+            val httpClients = application.dependencies.resolve<CarrierHttpClients>()
+            try {
+                val registry = application.dependencies.resolve<CarrierRegistry>()
+                val dpd = registry.lookup(CarrierId.DPD)
+                assertIs<DpdAdapter>(dpd)
+                assertEquals(CarrierId.DPD, dpd?.carrier)
+                assertEquals(listOf("country"), dpd?.requiredMetadata?.keys?.toList())
+                assertEquals(listOf(dpd), registry.all)
             } finally {
                 httpClients.close()
             }

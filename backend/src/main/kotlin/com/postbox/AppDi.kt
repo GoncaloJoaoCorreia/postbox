@@ -9,9 +9,11 @@ import com.postbox.carrier.CarrierId
 import com.postbox.carrier.CarrierRateLimiter
 import com.postbox.carrier.CarrierRegistry
 import com.postbox.carrier.DhlAdapter
+import com.postbox.carrier.DpdAdapter
 import com.postbox.carrier.EcoScootingAdapter
 import com.postbox.carrier.PaackAdapter
 import com.postbox.carrier.PostCttAdapter
+import com.postbox.carrier.PostNlAdapter
 import com.postbox.db.ParcelRepository
 import com.postbox.db.UserRepository
 import com.postbox.service.DefaultRefreshService
@@ -95,6 +97,14 @@ fun Application.appDependencies(config: AppConfig, db: Database) {
                 )
             }
         }
+        if (config.carriers.containsKey(CarrierId.POSTNL)) {
+            provide<CarrierAdapter>(name = CarrierId.POSTNL.id) {
+                PostNlAdapter(
+                    client = resolve<CarrierHttpClients>()[CarrierId.POSTNL],
+                    rateLimiter = config.carriers.getValue(CarrierId.POSTNL).toRateLimiter(),
+                )
+            }
+        }
         if (config.carriers.containsKey(CarrierId.PAACK)) {
             provide<CarrierAdapter>(name = CarrierId.PAACK.id) {
                 PaackAdapter(
@@ -108,6 +118,16 @@ fun Application.appDependencies(config: AppConfig, db: Database) {
                 EcoScootingAdapter(
                     client = resolve<CarrierHttpClients>()[CarrierId.ECOSCOOTING],
                     rateLimiter = resolve<Map<CarrierId, CarrierRateLimiter>>().getValue(CarrierId.ECOSCOOTING),
+                )
+            }
+        }
+        if (config.carriers.containsKey(CarrierId.DPD)) {
+            provide<CarrierAdapter>(name = CarrierId.DPD.id) {
+                DpdAdapter(
+                    client = resolve<CarrierHttpClients>()[CarrierId.DPD],
+                    rateLimiter = config.carriers.getValue(CarrierId.DPD).toRateLimiter(),
+                    firebaseApiKey = config.dpdFirebaseApiKey,
+                    firebaseAndroidCert = config.dpdFirebaseAndroidCert,
                 )
             }
         }
