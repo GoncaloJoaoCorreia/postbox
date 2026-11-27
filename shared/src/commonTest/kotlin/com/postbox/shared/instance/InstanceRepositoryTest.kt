@@ -46,8 +46,20 @@ private class MemSessionStore : InstanceSessionStore {
 }
 
 class InstanceRepositoryTest {
-    private fun repo(engine: MockEngine, store: MemSessionStore) =
-        InstanceRepository(store) { url -> PostboxApi(url, MemTokenStorage(), engine) }
+    private fun repo(
+        engine: MockEngine,
+        store: MemSessionStore,
+        tokens: MemTokenStorage = MemTokenStorage(),
+        onClearLocalData: suspend () -> Unit = {}
+    ) = InstanceRepository(store, onClearLocalData) { url -> PostboxApi(url, tokens, engine) }
+
+    private fun healthyEngine() = MockEngine { request ->
+        when (request.url.encodedPath) {
+            "/healthz" -> respond("""{"status":"ok"}""", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+            "/api/v1/setup/status" -> respond("""{"setupPending":false}""", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+            else -> respond("""{"error":{"code":"not-found","message":"?"}}""", HttpStatusCode.NotFound, headersOf(HttpHeaders.ContentType, "application/json"))
+        }
+    }
 
     @Test
     fun connectValidatesHealthAndSetupStatusThenPersistsNormalizedUrl() = runTest {
@@ -81,6 +93,32 @@ class InstanceRepositoryTest {
         assertIs<InstanceProbeResult.InvalidUrl>(result)
         assertEquals(false, called)
         assertNull(store.baseUrl())
+    }
+
+    @Test
+    fun connectToDifferentInstanceClearsLocalData() = runTest {
+        val store = MemSessionStore().apply { save("https://old.example.com") }
+        var cleared = false
+        val repo = repo(healthyEngine(), store) { cleared = true }
+
+        val result = repo.connect("https://new.example.com")
+
+        assertIs<InstanceProbeResult.Connected>(result)
+        assertEquals("https://new.example.com", store.baseUrl())
+        assertEquals(true, cleared)
+    }
+
+    @Test
+    fun connectToSameInstanceKeepsLocalData() = runTest {
+        val store = MemSessionStore().apply { save("https://same.example.com") }
+        var cleared = false
+        val repo = repo(healthyEngine(), store) { cleared = true }
+
+        val result = repo.connect("same.example.com")
+
+        assertIs<InstanceProbeResult.Connected>(result)
+        assertEquals("https://same.example.com", store.baseUrl())
+        assertEquals(false, cleared)
     }
 
     @Test

@@ -12,6 +12,7 @@ sealed interface InstanceProbeResult {
 
 class InstanceRepository(
     private val sessionStore: InstanceSessionStore,
+    private val clearLocalData: suspend () -> Unit,
     private val apiFactory: (String) -> PostboxApi
 ) {
     fun currentBaseUrl(): String? = sessionStore.baseUrl()
@@ -22,6 +23,8 @@ class InstanceRepository(
         return try {
             api.healthz()
             val setupPending = api.setupStatus()
+            val previous = sessionStore.baseUrl()
+            if (previous != null && previous != normalized) clearLocalData()
             sessionStore.save(normalized)
             InstanceProbeResult.Connected(setupPending)
         } catch (e: CancellationException) {

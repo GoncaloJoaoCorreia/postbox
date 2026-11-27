@@ -25,6 +25,7 @@ class PostboxDependencies(context: PlatformContext) {
         val baseUrl = sessionStore.baseUrl() ?: throw IllegalStateException("No Postbox instance configured")
         val cached = api
         if (cached != null && apiBaseUrl == baseUrl) return cached
+        cached?.close()
         val created = PostboxApi(baseUrl, tokenStorage)
         api = created
         apiBaseUrl = baseUrl
@@ -37,5 +38,11 @@ class PostboxDependencies(context: PlatformContext) {
 
     fun authRepository(): AuthRepository = AuthRepository(api(), tokenStorage) { repository().clearCache() }
 
-    fun instanceRepository(): InstanceRepository = InstanceRepository(sessionStore) { probeApi(it) }
+    fun instanceRepository(): InstanceRepository =
+        InstanceRepository(sessionStore, ::clearLocalData) { probeApi(it) }
+
+    private suspend fun clearLocalData() {
+        tokenStorage.clear()
+        repository().clearCache()
+    }
 }
