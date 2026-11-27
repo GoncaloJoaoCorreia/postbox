@@ -20,35 +20,80 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.runtime.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import com.postbox.shared.instance.InstanceProbeResult
 import com.postbox.shared.instance.InstanceRepository
 import com.postbox.shared.instance.InstanceUrl
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+data class InstanceSetupUiState(
+    val input: String = "",
+    val acknowledgedInsecure: Boolean = false,
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val connectedSetupPending: Boolean? = null
+)
+
+class InstanceSetupViewModel(private val instanceRepository: InstanceRepository) : ViewModel() {
+    private val _uiState = MutableStateFlow(InstanceSetupUiState())
+    val uiState: StateFlow<InstanceSetupUiState> = _uiState.asStateFlow()
+
+    val hasSavedInstance: Boolean
+        get() = instanceRepository.currentBaseUrl() != null
+
+    fun onInputChange(input: String) {
+        _uiState.update { it.copy(input = input, error = null) }
+    }
+
+    fun onAcknowledgeInsecure(acknowledged: Boolean) {
+        _uiState.update { it.copy(acknowledgedInsecure = acknowledged) }
+    }
+
+    fun onConnect() {
+        if (_uiState.value.isLoading) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            when (val result = instanceRepository.connect(_uiState.value.input)) {
+                is InstanceProbeResult.Connected ->
+                    _uiState.update { it.copy(isLoading = false, connectedSetupPending = result.setupPending) }
+                InstanceProbeResult.InvalidUrl ->
+                    _uiState.update { it.copy(isLoading = false, error = "Enter a valid server address, e.g. postbox.example.com") }
+                is InstanceProbeResult.Unreachable -> {
+                    val normalized = InstanceUrl.normalize(_uiState.value.input)
+                    _uiState.update { it.copy(isLoading = false, error = "Could not reach $normalized: ${result.message}") }
+                }
+            }
+        }
+    }
+
+    fun onUseSavedServer() {
+        _uiState.update { it.copy(connectedSetupPending = false) }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InstanceSetupScreen(
-    instanceRepository: InstanceRepository,
-    onConnected: (setupPending: Boolean) -> Unit
-) {
-    var input by remember { mutableStateOf("") }
-    var acknowledgedInsecure by remember { mutableStateOf(false) }
-    var loading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
+fun InstanceSetupScreen(viewModel: InstanceSetupViewModel, onConnected: (Boolean) -> Unit) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(state.connectedSetupPending) { setupPending ->
+        if (setupPending != null) onConnected(setupPending)
+    }
 
-    val normalized = InstanceUrl.normalize(input)
+    val normalized = InstanceUrl.normalize(state.input)
     val plainHttp = normalized != null && InstanceUrl.isPlainHttp(normalized)
-    val canConnect = normalized != null && (!plainHttp || acknowledgedInsecure) && !loading
+    val canConnect = normalized != null && (!plainHttp || state.acknowledgedInsecure) && !state.isLoading
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Connect to a server") }) }
@@ -62,8 +107,8 @@ fun InstanceSetupScreen(
                 style = MaterialTheme.typography.bodyMedium
             )
             OutlinedTextField(
-                value = input,
-                onValueChange = { input = it; error = null },
+                value = state.input,
+                onValueChange = viewModel::onInputChange,
                 label = { Text("Server address") },
                 placeholder = { Text("postbox.example.com") },
                 singleLine = true,
@@ -80,8 +125,8 @@ fun InstanceSetupScreen(
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(
-                                checked = acknowledgedInsecure,
-                                onCheckedChange = { acknowledgedInsecure = it }
+                                checked = state.acknowledgedInsecure,
+                                onCheckedChange = viewModel::onAcknowledgeInsecure
                             )
                             Text(
                                 "I understand this connection is not encrypted",
@@ -92,37 +137,21 @@ fun InstanceSetupScreen(
                     }
                 }
             }
-            error?.let {
+            state.error?.let {
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
             }
             Button(
-                onClick = {
-                    loading = true
-                    error = null
-                    scope.launch {
-                        when (val result = instanceRepository.connect(input)) {
-                            is InstanceProbeResult.Connected -> onConnected(result.setupPending)
-                            InstanceProbeResult.InvalidUrl -> {
-                                error = "Enter a valid server address, e.g. postbox.example.com"
-                                loading = false
-                            }
-                            is InstanceProbeResult.Unreachable -> {
-                                error = "Could not reach $normalized: ${result.message}"
-                                loading = false
-                            }
-                        }
-                    }
-                },
+                onClick = viewModel::onConnect,
                 enabled = canConnect,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (loading) {
+                if (state.isLoading) {
                     CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
                 }
-                Text(if (loading) "Connecting…" else "Connect")
+                Text(if (state.isLoading) "Connecting…" else "Connect")
             }
-            if (instanceRepository.currentBaseUrl() != null) {
-                TextButton(onClick = { onConnected(false) }) {
+            if (viewModel.hasSavedInstance) {
+                TextButton(onClick = viewModel::onUseSavedServer) {
                     Text("Use the saved server instead")
                 }
             }

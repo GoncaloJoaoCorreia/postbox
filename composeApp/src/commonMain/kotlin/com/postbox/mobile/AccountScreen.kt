@@ -22,60 +22,118 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.runtime.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.postbox.shared.api.ApiException
-import com.postbox.shared.api.SessionExpiredException
 import com.postbox.shared.auth.AuthRepository
 import com.postbox.shared.domain.model.DeviceSessionInfo
 import com.postbox.shared.domain.model.UserAccount
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+data class AccountUiState(
+    val account: UserAccount? = null,
+    val devices: List<DeviceSessionInfo> = emptyList(),
+    val isLoading: Boolean = true,
+    val error: String? = null,
+    val newPassword: String = "",
+    val actionError: String? = null,
+    val isBusy: Boolean = false,
+    val confirmLogout: Boolean = false
+)
+
+class AccountViewModel(private val authRepository: AuthRepository) : ViewModel() {
+    private val _uiState = MutableStateFlow(AccountUiState())
+    val uiState: StateFlow<AccountUiState> = _uiState.asStateFlow()
+
+    init {
+        reload()
+    }
+
+    fun currentSessionId(): String? = authRepository.currentSessionId()
+
+    fun reload() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            try {
+                val account = authRepository.me()
+                val devices = authRepository.listDevices()
+                _uiState.update { it.copy(account = account, devices = devices, isLoading = false) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.message) }
+            }
+        }
+    }
+
+    fun onPasswordChange(newPassword: String) {
+        _uiState.update { it.copy(newPassword = newPassword, actionError = null) }
+    }
+
+    fun changePassword() {
+        val password = _uiState.value.newPassword
+        if (password.length < 8 || _uiState.value.isBusy) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, actionError = null) }
+            try {
+                authRepository.changePassword(password)
+                _uiState.update { it.copy(isBusy = false) }
+            } catch (e: ApiException) {
+                _uiState.update { it.copy(isBusy = false, actionError = e.message) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isBusy = false, actionError = "Could not reach the server: ${e.message}") }
+            }
+        }
+    }
+
+    fun revokeDevice(id: String) {
+        viewModelScope.launch {
+            try {
+                authRepository.revokeDevice(id)
+                reload()
+            } catch (e: ApiException) {
+                _uiState.update { it.copy(actionError = e.message) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(actionError = "Could not reach the server: ${e.message}") }
+            }
+        }
+    }
+
+    fun onLogoutClick() {
+        _uiState.update { it.copy(confirmLogout = true) }
+    }
+
+    fun onLogoutDismissed() {
+        _uiState.update { it.copy(confirmLogout = false) }
+    }
+
+    fun logout() {
+        _uiState.update { it.copy(confirmLogout = false) }
+        viewModelScope.launch {
+            authRepository.logout()
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AccountScreen(
-    authRepository: AuthRepository,
-    onSessionEnded: () -> Unit
-) {
-    var account by remember { mutableStateOf<UserAccount?>(null) }
-    var devices by remember { mutableStateOf<List<DeviceSessionInfo>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var newPassword by remember { mutableStateOf("") }
-    var actionError by remember { mutableStateOf<String?>(null) }
-    var busy by remember { mutableStateOf(false) }
-    var confirmLogout by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    suspend fun reload() {
-        account = authRepository.me()
-        devices = authRepository.listDevices()
-    }
-
-    LaunchedEffect(Unit) {
-        try {
-            reload()
-        } catch (e: SessionExpiredException) {
-            onSessionEnded()
-        } catch (e: Exception) {
-            error = e.message
-        } finally {
-            loading = false
-        }
-    }
+fun AccountScreen(authRepository: AuthRepository) {
+    val viewModel: AccountViewModel = viewModel { AccountViewModel(authRepository) }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Account") }) }
     ) { padding ->
-        if (loading) {
+        if (state.isLoading) {
             Column(modifier = Modifier.fillMaxSize().padding(padding), verticalArrangement = Arrangement.Center) {
                 CircularProgressIndicator()
             }
@@ -88,9 +146,9 @@ fun AccountScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(account?.displayName ?: "", style = MaterialTheme.typography.titleMedium)
-                        Text(account?.email ?: "", style = MaterialTheme.typography.bodyMedium)
-                        Text("Role: ${account?.role}", style = MaterialTheme.typography.bodySmall)
+                        Text(state.account?.displayName ?: "", style = MaterialTheme.typography.titleMedium)
+                        Text(state.account?.email ?: "", style = MaterialTheme.typography.bodyMedium)
+                        Text("Role: ${state.account?.role}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -102,8 +160,8 @@ fun AccountScreen(
                         style = MaterialTheme.typography.bodySmall
                     )
                     OutlinedTextField(
-                        value = newPassword,
-                        onValueChange = { newPassword = it; actionError = null },
+                        value = state.newPassword,
+                        onValueChange = viewModel::onPasswordChange,
                         label = { Text("New password (min. 8 characters)") },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
@@ -111,25 +169,8 @@ fun AccountScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Button(
-                        onClick = {
-                            busy = true
-                            actionError = null
-                            scope.launch {
-                                try {
-                                    authRepository.changePassword(newPassword)
-                                    onSessionEnded()
-                                } catch (e: SessionExpiredException) {
-                                    onSessionEnded()
-                                } catch (e: ApiException) {
-                                    actionError = e.message
-                                } catch (e: Exception) {
-                                    actionError = "Could not reach the server: ${e.message}"
-                                } finally {
-                                    busy = false
-                                }
-                            }
-                        },
-                        enabled = newPassword.length >= 8 && !busy
+                        onClick = viewModel::changePassword,
+                        enabled = state.newPassword.length >= 8 && !state.isBusy
                     ) {
                         Text("Change password")
                     }
@@ -138,8 +179,8 @@ fun AccountScreen(
             item {
                 Text("Device sessions", style = MaterialTheme.typography.titleMedium)
             }
-            items(devices) { device ->
-                val isCurrent = device.id == authRepository.currentSessionId()
+            items(state.devices) { device ->
+                val isCurrent = device.id == viewModel.currentSessionId()
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -153,20 +194,7 @@ fun AccountScreen(
                             }
                         }
                         if (device.revokedAt == null) {
-                            TextButton(
-                                onClick = {
-                                    scope.launch {
-                                        try {
-                                            authRepository.revokeDevice(device.id)
-                                            if (isCurrent) onSessionEnded() else reload()
-                                        } catch (e: SessionExpiredException) {
-                                            onSessionEnded()
-                                        } catch (e: ApiException) {
-                                            actionError = e.message
-                                        }
-                                    }
-                                }
-                            ) {
+                            TextButton(onClick = { viewModel.revokeDevice(device.id) }) {
                                 Text("Revoke")
                             }
                         }
@@ -174,14 +202,14 @@ fun AccountScreen(
                 }
             }
             item {
-                actionError?.let {
+                state.actionError?.let {
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                 }
-                error?.let {
+                state.error?.let {
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                 }
                 OutlinedButton(
-                    onClick = { confirmLogout = true },
+                    onClick = viewModel::onLogoutClick,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Log out")
@@ -189,26 +217,18 @@ fun AccountScreen(
             }
         }
     }
-    if (confirmLogout) {
+    if (state.confirmLogout) {
         AlertDialog(
-            onDismissRequest = { confirmLogout = false },
+            onDismissRequest = viewModel::onLogoutDismissed,
             title = { Text("Log out?") },
             text = { Text("The session on this device is revoked on the server and local data is wiped.") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmLogout = false
-                        scope.launch {
-                            authRepository.logout()
-                            onSessionEnded()
-                        }
-                    }
-                ) {
+                TextButton(onClick = viewModel::logout) {
                     Text("Log out")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmLogout = false }) {
+                TextButton(onClick = viewModel::onLogoutDismissed) {
                     Text("Cancel")
                 }
             }
