@@ -1,6 +1,8 @@
 # AGENTS.md — postbox
 
-Kotlin/Ktor monorepo. The only Gradle module is `:backend` (the server); `frontend/`
+Kotlin/Ktor monorepo. Gradle modules: `:backend` (the server), plus the mobile modules
+`:shared` (Kotlin Multiplatform library: OpenAPI client, SQLDelight cache, secure storage)
+and `:composeApp` (Compose Multiplatform Android shell); `frontend/`
 is the Vite + React SPA; `docker/Dockerfile` is the single-container image (SPA + API +
 SQLite in one jar), published to GHCR by `.github/workflows/release.yml` on every push to
 `main` (and by `.github/workflows/docker-publish.yml` on manually pushed `v*` tags).
@@ -106,8 +108,10 @@ SQLite in one jar), published to GHCR by `.github/workflows/release.yml` on ever
 
 ## Commands
 
-- `./gradlew check` — compile + run all tests (the QA gate for this repo)
+- `./gradlew check` — compile + run all tests, all modules incl. `:shared`/`:composeApp` (the QA gate for this repo)
 - `./gradlew :backend:test` — backend tests only
+- `./gradlew :shared:check` — mobile shared-module tests only
+- `./gradlew :composeApp:assembleDebug` — build the Android debug APK (needs `ANDROID_HOME`; `minSdk` 26, `compileSdk`/`targetSdk` 36)
 - `./gradlew :backend:test --tests "com.postbox.HealthzTest"` — run a single test class
 - `./gradlew run` — start the server (blocking, foreground); then `curl http://localhost:8080/healthz` → `{"status":"ok"}`
 - `./gradlew :backend:shadowJar` — fat jar at `backend/build/libs/postbox.jar` (embeds `frontend/dist` as `web/` when it exists; this is what `docker/Dockerfile` runs)

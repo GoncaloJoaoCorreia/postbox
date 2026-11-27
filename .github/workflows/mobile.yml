@@ -1,0 +1,30 @@
+name: Mobile
+
+on:
+  pull_request:
+    branches:
+      - main
+      - feat/mobile-apps-epic
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Android SDK components
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-36" "build-tools;36.1.0"
+
+      - name: Build, lint and test the mobile modules
+        run: ./gradlew :shared:check :composeApp:check :composeApp:assembleDebug

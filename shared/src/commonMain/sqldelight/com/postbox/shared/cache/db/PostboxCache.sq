@@ -1,0 +1,82 @@
+CREATE TABLE parcel (
+    id TEXT NOT NULL PRIMARY KEY,
+    tracking_number TEXT NOT NULL,
+    carrier TEXT,
+    detection_method TEXT,
+    display_name TEXT NOT NULL,
+    status TEXT NOT NULL,
+    metadata_json TEXT,
+    missing_metadata_json TEXT,
+    last_checked_at TEXT,
+    last_check_error TEXT,
+    last_check_error_code TEXT,
+    rate_limited_until TEXT,
+    estimated_delivery_at TEXT,
+    created_at TEXT NOT NULL,
+    archived_at TEXT,
+    latest_event_json TEXT
+);
+
+CREATE TABLE parcel_event (
+    id TEXT NOT NULL PRIMARY KEY,
+    parcel_id TEXT NOT NULL REFERENCES parcel(id) ON DELETE CASCADE,
+    occurred_at TEXT NOT NULL,
+    status TEXT NOT NULL,
+    description TEXT NOT NULL,
+    location TEXT
+);
+
+CREATE INDEX parcel_event_parcel_idx ON parcel_event(parcel_id, occurred_at DESC);
+
+selectParcels:
+SELECT * FROM parcel
+WHERE archived_at IS NULL
+ORDER BY created_at DESC;
+
+selectAllParcels:
+SELECT * FROM parcel
+ORDER BY created_at DESC;
+
+selectParcelById:
+SELECT * FROM parcel
+WHERE id = ?;
+
+insertParcel:
+INSERT INTO parcel (id, tracking_number, carrier, detection_method, display_name, status, metadata_json, missing_metadata_json, last_checked_at, last_check_error, last_check_error_code, rate_limited_until, estimated_delivery_at, created_at, archived_at, latest_event_json)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateParcel:
+UPDATE parcel SET
+    tracking_number = ?,
+    carrier = ?,
+    detection_method = ?,
+    display_name = ?,
+    status = ?,
+    metadata_json = ?,
+    missing_metadata_json = ?,
+    last_checked_at = ?,
+    last_check_error = ?,
+    last_check_error_code = ?,
+    rate_limited_until = ?,
+    estimated_delivery_at = ?,
+    created_at = ?,
+    archived_at = ?,
+    latest_event_json = ?
+WHERE id = ?;
+
+deleteParcel:
+DELETE FROM parcel
+WHERE id = ?;
+
+selectEventsByParcel:
+SELECT * FROM parcel_event
+WHERE parcel_id = ?
+ORDER BY occurred_at DESC;
+
+upsertEvent:
+INSERT OR REPLACE INTO parcel_event (id, parcel_id, occurred_at, status, description, location)
+VALUES (?, ?, ?, ?, ?, ?);
+
+deleteEventsForParcel:
+DELETE FROM parcel_event
+WHERE parcel_id = ?;
