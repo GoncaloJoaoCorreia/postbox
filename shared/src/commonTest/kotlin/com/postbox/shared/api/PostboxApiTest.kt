@@ -12,6 +12,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 private class FakeTokenStorage : TokenStorage {
     var access: String? = "token-123"
@@ -79,6 +80,19 @@ class PostboxApiTest {
         assertEquals(1, parcels.size)
         assertEquals(Carrier.dhl, parcels.first().carrier)
         assertEquals(TrackingStatus.IN_TRANSIT, parcels.first().latestEvent?.status)
+    }
+
+    @Test
+    fun unknownEnumValuesFromNewerServerDegradeGracefully() = runTest {
+        val body = """[{"id":"11111111-1111-1111-1111-111111111111","trackingNumber":"X1","displayName":"X1","status":"TELEPORTED","createdAt":"2026-11-27T10:00:00Z","latestEvent":null,"carrier":"quantum","detectionMethod":"magic"}]"""
+        val engine = MockEngine {
+            respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+        }
+        val api = PostboxApi("http://localhost:8080", FakeTokenStorage(), engine)
+        val parcel = api.listParcels().single()
+        assertEquals(TrackingStatus.UNKNOWN, parcel.status)
+        assertNull(parcel.carrier)
+        assertNull(parcel.detectionMethod)
     }
 
     @Test

@@ -21,11 +21,12 @@ import com.postbox.shared.domain.model.DeviceSessionInfo
 import com.postbox.shared.domain.model.UserAccount
 import com.postbox.shared.domain.model.UserRole
 
-fun ApiTrackingStatus.toDomain(): TrackingStatus = TrackingStatus.valueOf(name)
+fun ApiTrackingStatus.toDomain(): TrackingStatus =
+    runCatching { TrackingStatus.valueOf(name) }.getOrElse { TrackingStatus.UNKNOWN }
 
-fun ApiCarrier.toDomain(): Carrier = Carrier.valueOf(name)
+fun ApiCarrier.toDomain(): Carrier? = runCatching { Carrier.valueOf(name) }.getOrNull()
 
-fun ApiDetectionMethod.toDomain(): DetectionMethod = DetectionMethod.valueOf(name)
+fun ApiDetectionMethod.toDomain(): DetectionMethod? = runCatching { DetectionMethod.valueOf(name) }.getOrNull()
 
 fun ApiMetadataField.toDomain(): MetadataField = MetadataField(
     name = name,
@@ -67,7 +68,7 @@ fun LoginResponse.toSession(): Session = Session(
     sessionId = sessionId
 )
 
-fun ApiUserRole.toDomain(): UserRole = UserRole.valueOf(name)
+fun ApiUserRole.toDomain(): UserRole = runCatching { UserRole.valueOf(name) }.getOrElse { UserRole.USER }
 
 fun ApiUser.toDomain(): UserAccount = UserAccount(
     id = id,
