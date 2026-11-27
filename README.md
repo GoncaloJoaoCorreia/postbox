@@ -9,9 +9,7 @@
   <a href="https://github.com/GoncaloJoaoCorreia/postbox/blob/main/UNLICENSE"><img src="https://img.shields.io/badge/license-Unlicense-blue" alt="License: Unlicense"></a>
   <a href="https://github.com/GoncaloJoaoCorreia/postbox"><img src="https://img.shields.io/badge/Kotlin-7952B3?logo=kotlin&logoColor=white" alt="Backend: Kotlin"></a>
   <a href="https://github.com/GoncaloJoaoCorreia/postbox"><img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="Frontend: TypeScript"></a>
-  <a href="https://github.com/GoncaloJoaoCorreia/postbox/actions/workflows/docker-publish.yml"><img src="https://img.shields.io/github/actions/workflow/status/GoncaloJoaoCorreia/postbox/docker-publish.yml?label=docker%20publish" alt="Docker image publish workflow"></a>
-  <a href="https://github.com/GoncaloJoaoCorreia/postbox/commits/main"><img src="https://img.shields.io/github/last-commit/GoncaloJoaoCorreia/postbox" alt="Last commit"></a>
-  <a href="https://github.com/GoncaloJoaoCorreia/postbox/issues"><img src="https://img.shields.io/github/issues/GoncaloJoaoCorreia/postbox" alt="Open issues"></a>
+  <a href="https://github.com/GoncaloJoaoCorreia/postbox/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/GoncaloJoaoCorreia/postbox/release.yml?label=release" alt="Release workflow"></a>
   <a href="https://ghcr.io/goncalojoaocorreia/postbox"><img src="https://img.shields.io/badge/docker-ghcr.io%2Fgoncalojoaocorreia%2Fpostbox-2496ED?logo=docker&logoColor=white" alt="Docker image on GHCR"></a>
 </p>
 
