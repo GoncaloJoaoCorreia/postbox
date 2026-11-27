@@ -2,7 +2,8 @@
 
 Kotlin/Ktor monorepo. The only Gradle module is `:backend` (the server); `frontend/`
 is the Vite + React SPA; `docker/Dockerfile` is the single-container image (SPA + API +
-SQLite in one jar), published to GHCR on `v*` tags by `.github/workflows/docker-publish.yml`.
+SQLite in one jar), published to GHCR by `.github/workflows/release.yml` on every push to
+`main` (and by `.github/workflows/docker-publish.yml` on manually pushed `v*` tags).
 
 ## Conventions
 
@@ -148,4 +149,4 @@ SQLite in one jar), published to GHCR on `v*` tags by `.github/workflows/docker-
 ## Housekeeping
 
 - `.gitignore` already covers `.plan/`, `.gradle/`, `build/`, `data/`, `*.db*` — never commit build outputs or the SQLite data dir.
-- `.github/workflows/docker-publish.yml` builds and pushes the image to GHCR on `v*` tags; `./gradlew check` is the QA gate.
+- `.github/workflows/release.yml` runs on every push to `main`: auto-incremented `v*` tag, backend + frontend tests, GHCR image publish, GitHub Release built from `CHANGELOG.md`, and the released changelog section committed back to `main`; `.github/workflows/docker-publish.yml` still publishes manually pushed `v*` tags; `./gradlew check` is the QA gate.
