@@ -64,6 +64,7 @@ SQLite in one jar), published to GHCR by `.github/workflows/release.yml` on ever
   Removed / Fixed / Security categories.
 - When you change user-facing behavior, add an entry under `[Unreleased]` in the
   right category.
+- Individual items must be heavily summarized — no longer than 10 words each.
 
 ### Tests
 
