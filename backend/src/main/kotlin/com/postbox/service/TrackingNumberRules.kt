@@ -6,8 +6,9 @@ import com.postbox.carrier.CarrierId
  * Format rules that map a tracking number to a ranked candidate carrier list.
  * A format is a hint, never proof: the parallel probe decides. Rules are listed
  * strongest first, so the first candidate is the provisional pick when no carrier
- * knows the number yet. v1 covers DHL, CTT, Paack and EcoScooting; the PostNL and
- * DPD rules ship with their adapters.
+ * knows the number yet. v1 covers DHL, CTT, Paack, EcoScooting and DPD; the PostNL
+ * rule ships with its adapter. DPD's exact-14-digit rule outranks EcoScooting's
+ * 12-18-digit numeric range (which it overlaps), but the probe still decides.
  *
  * Letter-prefixed formats are matched case-insensitively (carriers normalize to
  * uppercase themselves); EcoScooting's own lookup is case-sensitive, so its rules
@@ -24,6 +25,7 @@ object TrackingNumberRules {
     private val ecoscootingCn = Regex("""^CN[A-Z]{3}\d{18,20}$""")
     private val paackNumeric = Regex("""^\d{18}$""")
     private val dhlParcelInternational = Regex("""^JVGL\d{12,20}$""")
+    private val dpdParcel = Regex("""^\d{14}([0-9A-Z])?$""")
     private val ecoscootingNumeric = Regex("""^\d{12,18}$""")
 
     private val s10Weights = intArrayOf(8, 6, 4, 2, 3, 5, 9, 7)
@@ -39,6 +41,7 @@ object TrackingNumberRules {
         if (ecoscootingCn.matches(number)) candidates += CarrierId.ECOSCOOTING
         if (paackNumeric.matches(number)) candidates += CarrierId.PAACK
         if (dhlParcelInternational.matches(upper)) candidates += CarrierId.DHL
+        if (dpdParcel.matches(number)) candidates += CarrierId.DPD
         if (ecoscootingNumeric.matches(number)) candidates += CarrierId.ECOSCOOTING
         if (number.length >= MinPaackCandidateLength) candidates += CarrierId.PAACK
         return candidates.toList()
