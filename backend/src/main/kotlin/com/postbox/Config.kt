@@ -30,6 +30,8 @@ data class RefreshSettings(
     }
 }
 
+const val DEFAULT_JWT_SECRET = "dev-only-insecure-secret-change-me"
+
 /** Runtime configuration of the backend. */
 data class AppConfig(
     val host: String,
@@ -37,6 +39,7 @@ data class AppConfig(
     val jwtSecret: String,
     val sqlitePath: String,
     val dataDir: String,
+    val env: String = "dev",
     val carriers: Map<CarrierId, CarrierSettings> = emptyMap(),
     val dhlApiKey: String? = null,
     val dpdFirebaseApiKey: String? = null,
@@ -46,7 +49,15 @@ data class AppConfig(
         maxConcurrentProbes = 4,
         deliveredGrace = 3.days,
     ),
-)
+) {
+    init {
+        if (env == "production" && jwtSecret == DEFAULT_JWT_SECRET) {
+            throw IllegalStateException(
+                "POSTBOX_ENV=production requires an explicit JWT_SECRET — refusing to boot with the shipped dev-only default"
+            )
+        }
+    }
+}
 
 object ConfigLoader {
 
@@ -68,6 +79,7 @@ object ConfigLoader {
             jwtSecret = config.getString("postbox.jwt.secret"),
             sqlitePath = config.getString("postbox.storage.sqlitePath"),
             dataDir = config.getString("postbox.storage.dataDir"),
+            env = config.getString("postbox.env"),
             dhlApiKey = if (config.hasPath("postbox.dhl.apiKey")) config.getString("postbox.dhl.apiKey") else null,
             dpdFirebaseApiKey = if (config.hasPath("postbox.dpd.firebaseApiKey")) config.getString("postbox.dpd.firebaseApiKey") else null,
             dpdFirebaseAndroidCert = if (config.hasPath("postbox.dpd.firebaseAndroidCert")) config.getString("postbox.dpd.firebaseAndroidCert") else null,
@@ -93,6 +105,9 @@ object ConfigLoader {
         )
     }
 
-    /** Creates the data directory if it does not exist yet. */
-    fun ensureDataDir(config: AppConfig): File = File(config.dataDir).apply { mkdirs() }
+    /** Creates the data directory and the SQLite file's parent directory if they do not exist yet. */
+    fun ensureDataDir(config: AppConfig): File {
+        File(config.sqlitePath).parentFile?.mkdirs()
+        return File(config.dataDir).apply { mkdirs() }
+    }
 }

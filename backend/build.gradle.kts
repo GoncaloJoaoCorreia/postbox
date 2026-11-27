@@ -1,6 +1,9 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.shadow)
     application
 }
 
@@ -44,6 +47,14 @@ tasks.test {
     useJUnitPlatform()
     testLogging {
         events("passed", "skipped", "failed")
+    }
+}
+
+tasks.named<ShadowJar>("shadowJar") {
+    archiveFileName.set("postbox.jar")
+    mergeServiceFiles()
+    manifest {
+        attributes("Main-Class" to "com.postbox.ApplicationKt")
     }
 }
 

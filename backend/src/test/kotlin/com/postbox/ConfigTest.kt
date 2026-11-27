@@ -3,6 +3,7 @@ package com.postbox
 import com.typesafe.config.ConfigFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
@@ -39,6 +40,7 @@ class ConfigTest {
         assertEquals(8080, config.port)
         assertEquals("data/postbox.db", config.sqlitePath)
         assertEquals("data", config.dataDir)
+        assertEquals("dev", config.env)
         assertEquals(30.minutes, config.refresh.staleAfter)
         assertEquals(4, config.refresh.maxConcurrentProbes)
         assertEquals(3.days, config.refresh.deliveredGrace)
@@ -50,5 +52,30 @@ class ConfigTest {
         val env = ConfigFactory.parseString("""DHL_API_KEY = "test-dhl-key"""")
         val config = ConfigLoader.load(env = env)
         assertEquals("test-dhl-key", config.dhlApiKey)
+    }
+
+    @Test
+    fun `production env with the default JWT secret refuses to boot`() {
+        val env = ConfigFactory.parseString("""POSTBOX_ENV = "production"""")
+        assertFailsWith<IllegalStateException> { ConfigLoader.load(env = env) }
+    }
+
+    @Test
+    fun `production env with an explicit JWT_SECRET loads`() {
+        val env = ConfigFactory.parseString(
+            """
+            POSTBOX_ENV = "production"
+            JWT_SECRET = "strong-random-secret"
+            """.trimIndent()
+        )
+        val config = ConfigLoader.load(env = env)
+        assertEquals("production", config.env)
+        assertEquals("strong-random-secret", config.jwtSecret)
+    }
+
+    @Test
+    fun `shipped default in application conf matches DEFAULT_JWT_SECRET`() {
+        val defaults = ConfigFactory.parseResources("application.conf").resolve()
+        assertEquals(DEFAULT_JWT_SECRET, defaults.getString("postbox.jwt.secret"))
     }
 }
