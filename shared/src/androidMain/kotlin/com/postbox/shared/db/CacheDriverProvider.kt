@@ -1,14 +1,12 @@
 package com.postbox.shared.db
 
-import android.content.Context
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.postbox.shared.cache.db.PostboxCache
+import com.postbox.shared.storage.PlatformContext
 
-actual fun createCacheDriverProvider(context: Any): CacheDriverProvider {
-    val ctx = context as Context
-    return object : CacheDriverProvider {
+actual fun createCacheDriverProvider(context: PlatformContext): CacheDriverProvider =
+    object : CacheDriverProvider {
         override fun createDriver(): SqlDriver =
-            AndroidSqliteDriver(PostboxCache.Schema, ctx, "postbox-cache.db")
+            AndroidSqliteDriver(PostboxCache.Schema, context, "postbox-cache.db")
     }
-}

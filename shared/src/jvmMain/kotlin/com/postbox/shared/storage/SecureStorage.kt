@@ -33,6 +33,6 @@ private class InMemoryInstanceSessionStore : InstanceSessionStore {
     }
 }
 
-actual fun createTokenStorage(context: Any): TokenStorage = InMemoryTokenStorage()
+actual fun createTokenStorage(context: PlatformContext): TokenStorage = InMemoryTokenStorage()
 
-actual fun createInstanceSessionStore(context: Any): InstanceSessionStore = InMemoryInstanceSessionStore()
+actual fun createInstanceSessionStore(context: PlatformContext): InstanceSessionStore = InMemoryInstanceSessionStore()

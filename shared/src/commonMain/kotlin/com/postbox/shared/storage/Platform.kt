@@ -1,5 +1,7 @@
 package com.postbox.shared.storage
 
-expect fun createTokenStorage(context: Any): TokenStorage
+expect abstract class PlatformContext
 
-expect fun createInstanceSessionStore(context: Any): InstanceSessionStore
+expect fun createTokenStorage(context: PlatformContext): TokenStorage
+
+expect fun createInstanceSessionStore(context: PlatformContext): InstanceSessionStore

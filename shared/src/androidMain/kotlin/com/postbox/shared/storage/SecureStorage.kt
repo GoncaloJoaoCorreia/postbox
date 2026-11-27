@@ -1,10 +1,9 @@
 package com.postbox.shared.storage
 
-import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
-private fun encryptedPrefs(context: Context, fileName: String) = EncryptedSharedPreferences.create(
+private fun encryptedPrefs(context: PlatformContext, fileName: String) = EncryptedSharedPreferences.create(
     context,
     fileName,
     MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
@@ -12,10 +11,9 @@ private fun encryptedPrefs(context: Context, fileName: String) = EncryptedShared
     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
 )
 
-actual fun createTokenStorage(context: Any): TokenStorage {
-    val ctx = context as Context
+actual fun createTokenStorage(context: PlatformContext): TokenStorage {
     return object : TokenStorage {
-        private val prefs = encryptedPrefs(ctx, "postbox_tokens")
+        private val prefs = encryptedPrefs(context, "postbox_tokens")
 
         override fun accessToken(): String? = prefs.getString("access_token", null)
 
@@ -34,10 +32,9 @@ actual fun createTokenStorage(context: Any): TokenStorage {
     }
 }
 
-actual fun createInstanceSessionStore(context: Any): InstanceSessionStore {
-    val ctx = context as Context
+actual fun createInstanceSessionStore(context: PlatformContext): InstanceSessionStore {
     return object : InstanceSessionStore {
-        private val prefs = encryptedPrefs(ctx, "postbox_session")
+        private val prefs = encryptedPrefs(context, "postbox_session")
 
         override fun baseUrl(): String? = prefs.getString("base_url", null)
 
