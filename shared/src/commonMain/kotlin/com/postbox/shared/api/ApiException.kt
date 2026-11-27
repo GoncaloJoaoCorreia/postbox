@@ -8,3 +8,5 @@ class ApiException(
     val status: Int,
     val fields: List<MetadataField>? = null
 ) : Exception(message)
+
+class SessionExpiredException(override val message: String = "The session has expired, log in again") : Exception(message)

@@ -19,10 +19,13 @@ actual fun createTokenStorage(context: PlatformContext): TokenStorage {
 
         override fun refreshToken(): String? = prefs.getString("refresh_token", null)
 
-        override fun save(accessToken: String, refreshToken: String) {
+        override fun sessionId(): String? = prefs.getString("session_id", null)
+
+        override fun save(accessToken: String, refreshToken: String, sessionId: String) {
             prefs.edit()
                 .putString("access_token", accessToken)
                 .putString("refresh_token", refreshToken)
+                .putString("session_id", sessionId)
                 .apply()
         }
 

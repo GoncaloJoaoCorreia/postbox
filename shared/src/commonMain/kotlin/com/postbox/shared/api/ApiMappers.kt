@@ -8,12 +8,18 @@ import com.postbox.shared.domain.model.ParcelEvent
 import com.postbox.shared.domain.model.Session
 import com.postbox.shared.domain.model.TrackingStatus
 import com.postbox.shared.api.model.Carrier as ApiCarrier
+import com.postbox.shared.api.model.DeviceSession as ApiDeviceSession
 import com.postbox.shared.api.model.DetectionMethod as ApiDetectionMethod
 import com.postbox.shared.api.model.LoginResponse
 import com.postbox.shared.api.model.MetadataField as ApiMetadataField
 import com.postbox.shared.api.model.Parcel as ApiParcel
 import com.postbox.shared.api.model.ParcelEvent as ApiParcelEvent
 import com.postbox.shared.api.model.TrackingStatus as ApiTrackingStatus
+import com.postbox.shared.api.model.User as ApiUser
+import com.postbox.shared.api.model.UserRole as ApiUserRole
+import com.postbox.shared.domain.model.DeviceSessionInfo
+import com.postbox.shared.domain.model.UserAccount
+import com.postbox.shared.domain.model.UserRole
 
 fun ApiTrackingStatus.toDomain(): TrackingStatus = TrackingStatus.valueOf(name)
 
@@ -59,4 +65,23 @@ fun LoginResponse.toSession(): Session = Session(
     accessToken = token,
     refreshToken = refreshToken,
     sessionId = sessionId
+)
+
+fun ApiUserRole.toDomain(): UserRole = UserRole.valueOf(name)
+
+fun ApiUser.toDomain(): UserAccount = UserAccount(
+    id = id,
+    email = email,
+    displayName = displayName,
+    role = role.toDomain(),
+    isActive = isActive,
+    createdAt = createdAt
+)
+
+fun ApiDeviceSession.toDomain(): DeviceSessionInfo = DeviceSessionInfo(
+    id = id,
+    deviceName = deviceName,
+    createdAt = createdAt,
+    lastUsedAt = lastUsedAt,
+    revokedAt = revokedAt
 )

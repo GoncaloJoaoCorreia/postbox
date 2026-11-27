@@ -65,6 +65,11 @@ class ParcelRepository(
     suspend fun refreshParcel(id: String): Parcel =
         remote.refreshParcel(id).also { persistParcels(listOf(it)) }
 
+    suspend fun clearCache() = withContext(Dispatchers.Default) {
+        db.postboxCacheQueries.clearEvents()
+        db.postboxCacheQueries.clearParcels()
+    }
+
     private suspend fun persistParcels(parcels: List<Parcel>) = withContext(Dispatchers.Default) {
         val queries = db.postboxCacheQueries
         parcels.forEach { parcel ->

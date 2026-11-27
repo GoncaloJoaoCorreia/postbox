@@ -1,5 +1,6 @@
 package com.postbox.mobile
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
@@ -13,7 +14,7 @@ class MainActivity : ComponentActivity() {
         val dependencies = PostboxDependencies(this)
         setContent {
             PostboxTheme {
-                PostboxApp(baseUrl = dependencies.sessionStore.baseUrl())
+                PostboxApp(dependencies = dependencies, deviceName = Build.MODEL)
             }
         }
     }

@@ -15,17 +15,25 @@ import kotlin.test.assertFailsWith
 
 private class FakeTokenStorage : TokenStorage {
     var access: String? = "token-123"
+    var refresh: String? = null
+    var session: String? = null
 
     override fun accessToken(): String? = access
 
-    override fun refreshToken(): String? = null
+    override fun refreshToken(): String? = refresh
 
-    override fun save(accessToken: String, refreshToken: String) {
+    override fun sessionId(): String? = session
+
+    override fun save(accessToken: String, refreshToken: String, sessionId: String) {
         access = accessToken
+        refresh = refreshToken
+        session = sessionId
     }
 
     override fun clear() {
         access = null
+        refresh = null
+        session = null
     }
 }
 

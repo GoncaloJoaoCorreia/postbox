@@ -10,3 +10,6 @@ data object ParcelListRoute : AppRoute
 
 @Serializable
 data class ParcelDetailRoute(val parcelId: String) : AppRoute
+
+@Serializable
+data object AccountRoute : AppRoute
