@@ -1,7 +1,7 @@
 package com.postbox.shared.api
 
-import com.postbox.shared.api.model.Carrier
-import com.postbox.shared.api.model.TrackingStatus
+import com.postbox.shared.domain.model.Carrier
+import com.postbox.shared.domain.model.TrackingStatus
 import com.postbox.shared.storage.TokenStorage
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -61,7 +61,7 @@ class PostboxApiTest {
     }
 
     @Test
-    fun listParcelsParsesResponse() = runTest {
+    fun listParcelsParsesResponseIntoDomainModel() = runTest {
         val body = """[{"id":"11111111-1111-1111-1111-111111111111","trackingNumber":"1Z999","displayName":"1Z999","status":"IN_TRANSIT","createdAt":"2026-11-27T10:00:00Z","latestEvent":{"id":"22222222-2222-2222-2222-222222222222","occurredAt":"2026-11-27T11:00:00Z","status":"IN_TRANSIT","description":"In transit","location":null},"carrier":"dhl"}]"""
         val engine = MockEngine {
             respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
@@ -71,5 +71,18 @@ class PostboxApiTest {
         assertEquals(1, parcels.size)
         assertEquals(Carrier.dhl, parcels.first().carrier)
         assertEquals(TrackingStatus.IN_TRANSIT, parcels.first().latestEvent?.status)
+    }
+
+    @Test
+    fun loginMapsResponseToSession() = runTest {
+        val body = """{"token":"jwt-access","refreshToken":"opaque-refresh","sessionId":"33333333-3333-3333-3333-333333333333"}"""
+        val engine = MockEngine {
+            respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+        }
+        val api = PostboxApi("http://localhost:8080", FakeTokenStorage(), engine)
+        val session = api.login("admin@example.com", "supersecret1", deviceName = "Pixel 9")
+        assertEquals("jwt-access", session.accessToken)
+        assertEquals("opaque-refresh", session.refreshToken)
+        assertEquals("33333333-3333-3333-3333-333333333333", session.sessionId)
     }
 }

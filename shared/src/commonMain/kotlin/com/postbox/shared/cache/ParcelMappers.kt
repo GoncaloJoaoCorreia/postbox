@@ -1,13 +1,13 @@
 package com.postbox.shared.cache
 
-import com.postbox.shared.api.model.Carrier
-import com.postbox.shared.api.model.DetectionMethod
-import com.postbox.shared.api.model.MetadataField
-import com.postbox.shared.api.model.Parcel
-import com.postbox.shared.api.model.ParcelEvent
-import com.postbox.shared.api.model.TrackingStatus
 import com.postbox.shared.cache.db.Parcel as ParcelRow
-import com.postbox.shared.cache.db.Parcel_event as ParcelEventRow
+import com.postbox.shared.cache.db.ParcelEvent as ParcelEventRow
+import com.postbox.shared.domain.model.Carrier
+import com.postbox.shared.domain.model.DetectionMethod
+import com.postbox.shared.domain.model.MetadataField
+import com.postbox.shared.domain.model.Parcel
+import com.postbox.shared.domain.model.ParcelEvent
+import com.postbox.shared.domain.model.TrackingStatus
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 

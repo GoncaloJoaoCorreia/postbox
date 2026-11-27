@@ -1,23 +1,34 @@
 package com.postbox.shared.repository
 
+import app.cash.sqldelight.coroutines.asFlow
 import com.postbox.shared.api.ParcelsRemoteDataSource
-import com.postbox.shared.api.model.Parcel
-import com.postbox.shared.api.model.ParcelEvent
 import com.postbox.shared.cache.db.Parcel as ParcelRow
-import com.postbox.shared.cache.db.Parcel_event as ParcelEventRow
+import com.postbox.shared.cache.db.ParcelEvent as ParcelEventRow
 import com.postbox.shared.cache.db.PostboxCache
 import com.postbox.shared.cache.db.PostboxCacheQueries
 import com.postbox.shared.cache.toEventRow
 import com.postbox.shared.cache.toParcel
 import com.postbox.shared.cache.toParcelEvent
 import com.postbox.shared.cache.toRow
+import com.postbox.shared.domain.model.Parcel
+import com.postbox.shared.domain.model.ParcelEvent
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 class ParcelRepository(
     private val remote: ParcelsRemoteDataSource,
     private val db: PostboxCache
 ) {
+    fun parcelsFlow(): Flow<List<Parcel>> =
+        db.postboxCacheQueries.selectParcels().asFlow()
+            .map { query -> query.executeAsList().map { it.toParcel() } }
+
+    fun parcelEventsFlow(parcelId: String): Flow<List<ParcelEvent>> =
+        db.postboxCacheQueries.selectEventsByParcel(parcelId).asFlow()
+            .map { query -> query.executeAsList().map { it.toParcelEvent() } }
+
     suspend fun listParcels(): List<Parcel> {
         val cached = withContext(Dispatchers.Default) {
             db.postboxCacheQueries.selectParcels().executeAsList().map { it.toParcel() }
@@ -57,8 +68,7 @@ class ParcelRepository(
     private suspend fun persistParcels(parcels: List<Parcel>) = withContext(Dispatchers.Default) {
         val queries = db.postboxCacheQueries
         parcels.forEach { parcel ->
-            val row = parcel.toRow()
-            if (queries.updateParcelRow(row).await() == 0L) queries.insertParcelRow(row).await()
+            queries.upsertParcelRow(parcel.toRow()).await()
             parcel.latestEvent?.let { queries.upsertEventRow(it.toEventRow(parcel.id)).await() }
         }
     }
@@ -68,26 +78,7 @@ class ParcelRepository(
         events.forEach { queries.upsertEventRow(it.toEventRow(parcelId)).await() }
     }
 
-    private fun PostboxCacheQueries.updateParcelRow(row: ParcelRow) = updateParcel(
-        tracking_number = row.tracking_number,
-        carrier = row.carrier,
-        detection_method = row.detection_method,
-        display_name = row.display_name,
-        status = row.status,
-        metadata_json = row.metadata_json,
-        missing_metadata_json = row.missing_metadata_json,
-        last_checked_at = row.last_checked_at,
-        last_check_error = row.last_check_error,
-        last_check_error_code = row.last_check_error_code,
-        rate_limited_until = row.rate_limited_until,
-        estimated_delivery_at = row.estimated_delivery_at,
-        created_at = row.created_at,
-        archived_at = row.archived_at,
-        latest_event_json = row.latest_event_json,
-        id = row.id
-    )
-
-    private fun PostboxCacheQueries.insertParcelRow(row: ParcelRow) = insertParcel(
+    private fun PostboxCacheQueries.upsertParcelRow(row: ParcelRow) = upsertParcel(
         id = row.id,
         tracking_number = row.tracking_number,
         carrier = row.carrier,

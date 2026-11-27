@@ -1,6 +1,6 @@
 package com.postbox.shared.api
 
-import com.postbox.shared.api.model.MetadataField
+import com.postbox.shared.domain.model.MetadataField
 
 class ApiException(
     val code: String,

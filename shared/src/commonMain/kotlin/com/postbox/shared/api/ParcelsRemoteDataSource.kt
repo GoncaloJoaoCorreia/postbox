@@ -1,7 +1,7 @@
 package com.postbox.shared.api
 
-import com.postbox.shared.api.model.Parcel
-import com.postbox.shared.api.model.ParcelEvent
+import com.postbox.shared.domain.model.Parcel
+import com.postbox.shared.domain.model.ParcelEvent
 
 interface ParcelsRemoteDataSource {
     suspend fun listParcels(): List<Parcel>

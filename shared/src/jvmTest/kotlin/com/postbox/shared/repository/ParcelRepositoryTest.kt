@@ -3,12 +3,13 @@ package com.postbox.shared.repository
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.postbox.shared.api.ApiException
 import com.postbox.shared.api.ParcelsRemoteDataSource
-import com.postbox.shared.api.model.Carrier
-import com.postbox.shared.api.model.Parcel
-import com.postbox.shared.api.model.ParcelEvent
-import com.postbox.shared.api.model.TrackingStatus
 import com.postbox.shared.cache.db.PostboxCache
+import com.postbox.shared.domain.model.Carrier
+import com.postbox.shared.domain.model.Parcel
+import com.postbox.shared.domain.model.ParcelEvent
+import com.postbox.shared.domain.model.TrackingStatus
 import java.io.IOException
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant
 import kotlin.test.Test
@@ -19,7 +20,6 @@ private class FakeRemote(
     var parcels: List<Parcel> = emptyList(),
     var failure: Exception? = null
 ) : ParcelsRemoteDataSource {
-
     override suspend fun listParcels(): List<Parcel> = failure?.let { throw it } ?: parcels
 
     override suspend fun getParcel(id: String): Parcel =
@@ -45,16 +45,7 @@ private fun parcel(id: String) = Parcel(
         description = "In transit",
         location = null
     ),
-    carrier = Carrier.dhl,
-    detectionMethod = null,
-    metadata = null,
-    missingMetadata = null,
-    lastCheckedAt = null,
-    lastCheckError = null,
-    lastCheckErrorCode = null,
-    rateLimitedUntil = null,
-    estimatedDeliveryAt = null,
-    archivedAt = null
+    carrier = Carrier.dhl
 )
 
 class ParcelRepositoryTest {
@@ -95,5 +86,14 @@ class ParcelRepositoryTest {
         val e = assertFailsWith<ApiException> { repo.listParcels() }
         assertEquals("unauthorized", e.code)
         assertEquals(401, e.status)
+    }
+
+    @Test
+    fun parcelsFlowEmitsCachedParcels() = runTest {
+        val remote = FakeRemote(parcels = listOf(parcel("p1")))
+        val repo = ParcelRepository(remote, newDb())
+        repo.listParcels()
+
+        assertEquals("p1", repo.parcelsFlow().first().single().id)
     }
 }

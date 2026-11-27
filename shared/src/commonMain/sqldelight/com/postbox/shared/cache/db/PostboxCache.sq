@@ -17,7 +17,7 @@ CREATE TABLE parcel (
     latest_event_json TEXT
 );
 
-CREATE TABLE parcel_event (
+CREATE TABLE parcelEvent (
     id TEXT NOT NULL PRIMARY KEY,
     parcel_id TEXT NOT NULL REFERENCES parcel(id) ON DELETE CASCADE,
     occurred_at TEXT NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE parcel_event (
     location TEXT
 );
 
-CREATE INDEX parcel_event_parcel_idx ON parcel_event(parcel_id, occurred_at DESC);
+CREATE INDEX parcelEvent_parcel_idx ON parcelEvent(parcel_id, occurred_at DESC);
 
 selectParcels:
 SELECT * FROM parcel
@@ -41,42 +41,45 @@ selectParcelById:
 SELECT * FROM parcel
 WHERE id = ?;
 
-insertParcel:
+upsertParcel:
 INSERT INTO parcel (id, tracking_number, carrier, detection_method, display_name, status, metadata_json, missing_metadata_json, last_checked_at, last_check_error, last_check_error_code, rate_limited_until, estimated_delivery_at, created_at, archived_at, latest_event_json)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-
-updateParcel:
-UPDATE parcel SET
-    tracking_number = ?,
-    carrier = ?,
-    detection_method = ?,
-    display_name = ?,
-    status = ?,
-    metadata_json = ?,
-    missing_metadata_json = ?,
-    last_checked_at = ?,
-    last_check_error = ?,
-    last_check_error_code = ?,
-    rate_limited_until = ?,
-    estimated_delivery_at = ?,
-    created_at = ?,
-    archived_at = ?,
-    latest_event_json = ?
-WHERE id = ?;
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+    tracking_number = excluded.tracking_number,
+    carrier = excluded.carrier,
+    detection_method = excluded.detection_method,
+    display_name = excluded.display_name,
+    status = excluded.status,
+    metadata_json = excluded.metadata_json,
+    missing_metadata_json = excluded.missing_metadata_json,
+    last_checked_at = excluded.last_checked_at,
+    last_check_error = excluded.last_check_error,
+    last_check_error_code = excluded.last_check_error_code,
+    rate_limited_until = excluded.rate_limited_until,
+    estimated_delivery_at = excluded.estimated_delivery_at,
+    created_at = excluded.created_at,
+    archived_at = excluded.archived_at,
+    latest_event_json = excluded.latest_event_json;
 
 deleteParcel:
 DELETE FROM parcel
 WHERE id = ?;
 
 selectEventsByParcel:
-SELECT * FROM parcel_event
+SELECT * FROM parcelEvent
 WHERE parcel_id = ?
 ORDER BY occurred_at DESC;
 
 upsertEvent:
-INSERT OR REPLACE INTO parcel_event (id, parcel_id, occurred_at, status, description, location)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO parcelEvent (id, parcel_id, occurred_at, status, description, location)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+    parcel_id = excluded.parcel_id,
+    occurred_at = excluded.occurred_at,
+    status = excluded.status,
+    description = excluded.description,
+    location = excluded.location;
 
 deleteEventsForParcel:
-DELETE FROM parcel_event
+DELETE FROM parcelEvent
 WHERE parcel_id = ?;
