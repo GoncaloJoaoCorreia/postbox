@@ -11,3 +11,13 @@ docker build -f docker/Dockerfile -t postbox .
 
 The image is published to GHCR as `ghcr.io/<owner>/postbox` on `v*` tags by
 `.github/workflows/docker-publish.yml`.
+
+To run the published image without typing the `docker run` flags, use the
+bundled `docker-compose.yml` (named `postbox-data` volume, env section with a
+required `JWT_SECRET` — see the quick start in the root `README.md`):
+
+```sh
+cd docker
+echo "JWT_SECRET=$(openssl rand -hex 32)" > .env
+docker compose up -d
+```
