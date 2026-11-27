@@ -8,7 +8,11 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -18,6 +22,7 @@ private class MemTokenStorage : TokenStorage {
     var access: String? = null
     var refresh: String? = null
     var session: String? = null
+    private val changeSignal = MutableSharedFlow<Unit>(replay = 1)
 
     override fun accessToken(): String? = access
 
@@ -29,13 +34,17 @@ private class MemTokenStorage : TokenStorage {
         access = accessToken
         refresh = refreshToken
         session = sessionId
+        changeSignal.tryEmit(Unit)
     }
 
     override fun clear() {
         access = null
         refresh = null
         session = null
+        changeSignal.tryEmit(Unit)
     }
+
+    override fun changes(): Flow<Unit> = changeSignal
 }
 
 class AuthRepositoryTest {
@@ -107,6 +116,38 @@ class AuthRepositoryTest {
 
         assertFalse(repo.hasSession())
         assertTrue(cacheCleared)
+    }
+
+    @Test
+    fun sessionStateEmitsCurrentValueThenTracksTokenChanges() = runTest {
+        val engine = MockEngine { request ->
+            when {
+                request.url.encodedPath == "/api/v1/auth/login" -> respond(
+                    """{"token":"jwt","refreshToken":"opaque","sessionId":"s-1"}""",
+                    HttpStatusCode.OK,
+                    headersOf(HttpHeaders.ContentType, "application/json")
+                )
+                request.method == HttpMethod.Delete -> respond("", HttpStatusCode.NoContent)
+                else -> respond(
+                    """{"error":{"code":"not-found","message":"?"}}""",
+                    HttpStatusCode.NotFound,
+                    headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
+        }
+        val tokens = MemTokenStorage()
+        val repo = AuthRepository(PostboxApi("http://x", tokens, engine), tokens) {}
+
+        val collected = mutableListOf<Boolean>()
+        val job = launch { repo.sessionState().collect { collected.add(it) } }
+        yield()
+        repo.login("a@b.c", "password123")
+        yield()
+        repo.logout()
+        yield()
+        job.cancel()
+
+        assertEquals(listOf(false, true, false), collected)
     }
 
     @Test

@@ -1,9 +1,13 @@
 package com.postbox.shared.storage
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+
 private class InMemoryTokenStorage : TokenStorage {
     private var access: String? = null
     private var refresh: String? = null
     private var session: String? = null
+    private val changeSignal = MutableSharedFlow<Unit>(replay = 1)
 
     override fun accessToken(): String? = access
 
@@ -15,13 +19,17 @@ private class InMemoryTokenStorage : TokenStorage {
         access = accessToken
         refresh = refreshToken
         session = sessionId
+        changeSignal.tryEmit(Unit)
     }
 
     override fun clear() {
         access = null
         refresh = null
         session = null
+        changeSignal.tryEmit(Unit)
     }
+
+    override fun changes(): Flow<Unit> = changeSignal
 }
 
 private class InMemoryInstanceSessionStore : InstanceSessionStore {

@@ -8,6 +8,8 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -18,6 +20,7 @@ private class FakeTokenStorage : TokenStorage {
     var access: String? = "token-123"
     var refresh: String? = null
     var session: String? = null
+    private val changeSignal = MutableSharedFlow<Unit>(replay = 1)
 
     override fun accessToken(): String? = access
 
@@ -29,13 +32,17 @@ private class FakeTokenStorage : TokenStorage {
         access = accessToken
         refresh = refreshToken
         session = sessionId
+        changeSignal.tryEmit(Unit)
     }
 
     override fun clear() {
         access = null
         refresh = null
         session = null
+        changeSignal.tryEmit(Unit)
     }
+
+    override fun changes(): Flow<Unit> = changeSignal
 }
 
 class PostboxApiTest {

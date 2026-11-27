@@ -7,6 +7,8 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,6 +19,7 @@ private class RecordingTokenStorage : TokenStorage {
     var access: String? = "old-access"
     var refresh: String? = "old-refresh"
     var session: String? = "session-1"
+    private val changeSignal = MutableSharedFlow<Unit>(replay = 1)
 
     override fun accessToken(): String? = access
 
@@ -28,13 +31,17 @@ private class RecordingTokenStorage : TokenStorage {
         access = accessToken
         refresh = refreshToken
         session = sessionId
+        changeSignal.tryEmit(Unit)
     }
 
     override fun clear() {
         access = null
         refresh = null
         session = null
+        changeSignal.tryEmit(Unit)
     }
+
+    override fun changes(): Flow<Unit> = changeSignal
 }
 
 private val parcelBody = """[{"id":"11111111-1111-1111-1111-111111111111","trackingNumber":"1Z999","displayName":"1Z999","status":"IN_TRANSIT","createdAt":"2026-11-27T10:00:00Z","latestEvent":null,"carrier":null}]"""

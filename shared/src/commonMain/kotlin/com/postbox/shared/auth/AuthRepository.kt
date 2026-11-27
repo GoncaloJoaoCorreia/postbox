@@ -5,6 +5,9 @@ import com.postbox.shared.domain.model.DeviceSessionInfo
 import com.postbox.shared.domain.model.Session
 import com.postbox.shared.domain.model.UserAccount
 import com.postbox.shared.storage.TokenStorage
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 
 class AuthRepository(
     private val api: PostboxApi,
@@ -12,6 +15,10 @@ class AuthRepository(
     private val clearCache: suspend () -> Unit
 ) {
     fun hasSession(): Boolean = tokenStorage.accessToken() != null && tokenStorage.refreshToken() != null
+
+    fun sessionState(): Flow<Boolean> = tokenStorage.changes()
+        .map { hasSession() }
+        .onStart { emit(hasSession()) }
 
     fun currentSessionId(): String? = tokenStorage.sessionId()
 

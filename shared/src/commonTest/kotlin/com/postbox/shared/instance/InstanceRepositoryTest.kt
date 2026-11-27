@@ -8,6 +8,8 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -15,11 +17,18 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 private class MemTokenStorage : TokenStorage {
+    private val changeSignal = MutableSharedFlow<Unit>(replay = 1)
+
     override fun accessToken(): String? = null
     override fun refreshToken(): String? = null
     override fun sessionId(): String? = null
-    override fun save(accessToken: String, refreshToken: String, sessionId: String) {}
-    override fun clear() {}
+    override fun save(accessToken: String, refreshToken: String, sessionId: String) {
+        changeSignal.tryEmit(Unit)
+    }
+    override fun clear() {
+        changeSignal.tryEmit(Unit)
+    }
+    override fun changes(): Flow<Unit> = changeSignal
 }
 
 private class MemSessionStore : InstanceSessionStore {
