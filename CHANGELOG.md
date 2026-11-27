@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-27
+
 ### Added
 
 - Self-hosting documentation (G-68): modernized `README.md` — hero header with a shields.io badge row, table of contents, features, screenshots (`docs/screenshots/`), Docker quick start (`docker run` plus the new `docker/docker-compose.yml` example with a named volume and env section), env-var configuration reference, admin runbook (first-run setup, account management, SQLite backup/restore, maintenance mode), carrier support matrix (official vs unofficial endpoints and required metadata), API and development sections; `.env` added to `.gitignore` for the compose quick start
