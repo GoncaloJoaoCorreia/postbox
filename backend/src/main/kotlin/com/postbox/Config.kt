@@ -39,6 +39,8 @@ data class AppConfig(
     val dataDir: String,
     val carriers: Map<CarrierId, CarrierSettings> = emptyMap(),
     val dhlApiKey: String? = null,
+    val dpdFirebaseApiKey: String? = null,
+    val dpdFirebaseAndroidCert: String? = null,
     val refresh: RefreshSettings = RefreshSettings(
         staleAfter = 30.minutes,
         maxConcurrentProbes = 4,
@@ -67,6 +69,8 @@ object ConfigLoader {
             sqlitePath = config.getString("postbox.storage.sqlitePath"),
             dataDir = config.getString("postbox.storage.dataDir"),
             dhlApiKey = if (config.hasPath("postbox.dhl.apiKey")) config.getString("postbox.dhl.apiKey") else null,
+            dpdFirebaseApiKey = if (config.hasPath("postbox.dpd.firebaseApiKey")) config.getString("postbox.dpd.firebaseApiKey") else null,
+            dpdFirebaseAndroidCert = if (config.hasPath("postbox.dpd.firebaseAndroidCert")) config.getString("postbox.dpd.firebaseAndroidCert") else null,
             // Driven by the CarrierId enum, not by config keys, so a typo'd carrier
             // key can never create a phantom carrier.
             carriers = CarrierId.entries

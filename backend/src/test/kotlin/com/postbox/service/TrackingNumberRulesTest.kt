@@ -45,6 +45,19 @@ class TrackingNumberRulesTest {
     }
 
     @Test
+    fun `DPD 14-digit parcel number ranks dpd above the weaker 12-18 digit ecoscooting numeric rule`() {
+        assertEquals(
+            listOf(CarrierId.DPD, CarrierId.ECOSCOOTING, CarrierId.PAACK),
+            TrackingNumberRules.candidatesFor("09550000000101"),
+        )
+    }
+
+    @Test
+    fun `DPD number with a check character is a dpd candidate the numeric ecoscooting rule does not cover`() {
+        assertEquals(listOf(CarrierId.DPD, CarrierId.PAACK), TrackingNumberRules.candidatesFor("09550000000101A"))
+    }
+
+    @Test
     fun `EcoScooting samples rank ecoscooting first`() {
         assertEquals(listOf(CarrierId.ECOSCOOTING, CarrierId.PAACK), TrackingNumberRules.candidatesFor("CNPRT42500041234024382386"))
         assertEquals(listOf(CarrierId.ECOSCOOTING, CarrierId.PAACK), TrackingNumberRules.candidatesFor("460357243181"))
