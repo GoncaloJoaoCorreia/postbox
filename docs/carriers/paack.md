@@ -1,7 +1,6 @@
 # Paack — consumer tracking endpoint (reverse-engineered)
 
-Research for [G-72](https://linear.app/gryphonforge/issue/G-72), feeds the adapter in
-[G-61](https://linear.app/gryphonforge/issue/G-61). Captured 2026-11-23 against the live
+Research for `G-72`, feeds the adapter in `G-61`. Captured 2026-11-23 against the live
 public tracking page using a headless browser (REA `capture_browser_scenario`) plus plain
 `curl` probes. Paack's merchant API (paack.readme.io) needs merchant credentials and is
 out of scope; everything below works **without any auth**.

@@ -2,7 +2,7 @@
 
 Research date: 2026-11-26. Scope: the parcel-status lookups behind [dpd.pt](https://tracking.dpd.pt) (DPD
 Portugal) and [dpd.nl](https://www.dpd.com/nl/en/receiving/track/) (DPD Netherlands), so the adapter in
-[G-60](https://linear.app/gryphonforge/issue/G-60/dpd-adapter-per-country-tracking-pt-first) can be implemented
+`G-60` can be implemented
 directly. Research only — no adapter code here. Fixtures live in `docs/carriers/dpd/fixtures/`; all fixture
 identifiers, names, addresses, coordinates and clocks are synthetic (invented numbers such as `09550000000101`
 were never issued). Reproduce with `dpd_probe.sh` in this directory. Sources at the bottom.
