@@ -59,7 +59,7 @@ class ParcelRepositoryTest {
     fun networkSyncPopulatesCacheAndCacheServesWhenOffline() = runTest {
         val remote = FakeRemote(parcels = listOf(parcel("p1")))
         val db = newDb()
-        val repo = ParcelRepository(remote, db)
+        val repo = ParcelRepository(remote, db, testDispatcher)
 
         assertEquals("p1", repo.listParcels().single().id)
 
@@ -72,7 +72,7 @@ class ParcelRepositoryTest {
     @Test
     fun detailFallsBackToCacheOnFailure() = runTest {
         val remote = FakeRemote(parcels = listOf(parcel("p1")))
-        val repo = ParcelRepository(remote, newDb())
+        val repo = ParcelRepository(remote, newDb(), testDispatcher)
         repo.listParcels()
 
         remote.failure = IOException("offline")
@@ -82,7 +82,7 @@ class ParcelRepositoryTest {
     @Test
     fun apiErrorSurfacesWhenCacheIsEmpty() = runTest {
         val remote = FakeRemote(failure = ApiException("unauthorized", "A valid bearer token is required", 401))
-        val repo = ParcelRepository(remote, newDb())
+        val repo = ParcelRepository(remote, newDb(), testDispatcher)
         val e = assertFailsWith<ApiException> { repo.listParcels() }
         assertEquals("unauthorized", e.code)
         assertEquals(401, e.status)
@@ -91,7 +91,7 @@ class ParcelRepositoryTest {
     @Test
     fun parcelsFlowEmitsCachedParcels() = runTest {
         val remote = FakeRemote(parcels = listOf(parcel("p1")))
-        val repo = ParcelRepository(remote, newDb())
+        val repo = ParcelRepository(remote, newDb(), testDispatcher)
         repo.listParcels()
 
         assertEquals("p1", repo.parcelsFlow().first().single().id)
