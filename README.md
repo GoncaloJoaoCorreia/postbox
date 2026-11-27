@@ -6,7 +6,7 @@ Monorepo scaffold: a Kotlin/Ktor backend with room for a frontend and Docker pac
 
 - `backend/` — Kotlin 2.x / Ktor 3.x (Netty) server, Gradle module `:backend`
 - `frontend/` — Vite + React + TypeScript SPA (see `frontend/README.md`)
-- `docker/` — placeholder for Dockerfile / docker-compose (later issue)
+- `docker/` — single-container `Dockerfile` (SPA + API + SQLite in one image; published to GHCR on `v*` tags)
 
 ## Run the server
 

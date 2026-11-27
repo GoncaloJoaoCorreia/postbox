@@ -1,0 +1,14 @@
+.git
+.github
+.gradle
+.plan
+.idea
+.vscode
+**/node_modules
+frontend/dist
+**/build
+data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

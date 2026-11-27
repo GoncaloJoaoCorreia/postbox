@@ -1,7 +1,8 @@
 # AGENTS.md — postbox
 
 Kotlin/Ktor monorepo. The only Gradle module is `:backend` (the server); `frontend/`
-is the Vite + React SPA; `docker/` is a placeholder (README only) reserved for a later issue.
+is the Vite + React SPA; `docker/Dockerfile` is the single-container image (SPA + API +
+SQLite in one jar), published to GHCR on `v*` tags by `.github/workflows/docker-publish.yml`.
 
 ## Conventions
 
@@ -108,6 +109,7 @@ is the Vite + React SPA; `docker/` is a placeholder (README only) reserved for a
 - `./gradlew :backend:test` — backend tests only
 - `./gradlew :backend:test --tests "com.postbox.HealthzTest"` — run a single test class
 - `./gradlew run` — start the server (blocking, foreground); then `curl http://localhost:8080/healthz` → `{"status":"ok"}`
+- `./gradlew :backend:shadowJar` — fat jar at `backend/build/libs/postbox.jar` (embeds `frontend/dist` as `web/` when it exists; this is what `docker/Dockerfile` runs)
 - Frontend (from `frontend/`): `npm install`, then `npm run dev` (Vite dev server proxying `/api` to the backend on :8080), `npm run build` (`tsc -b && vite build` → `dist/`), `npm run lint` / `npm run format` / `npm test` (Vitest + MSW), `npm run gen:api` (regenerate `src/api/schema.d.ts` from `../docs/openapi.yaml`)
 - Always use the committed wrapper (`./gradlew`); no system Gradle needed. First build requires network (wrapper bootstrap, Maven Central, Plugin Portal) and auto-provisions a JDK 17 toolchain (`jvmToolchain(17)`).
 
@@ -124,9 +126,9 @@ is the Vite + React SPA; `docker/` is a placeholder (README only) reserved for a
 
 ## Config
 
-- Defaults live in HOCON at `backend/src/main/resources/application.conf`; env vars override them via the `${?VAR}` optional-substitution pattern merged with `ConfigFactory.systemEnvironment()` in `ConfigLoader.load` (`backend/.../Config.kt`). Overridable keys: `PORT` (default `8080`), `JWT_SECRET`, `SQLITE_PATH` (default `data/postbox.db`), `DATA_DIR` (default `data`), `DHL_API_KEY` (default unset — DHL adapter disabled), `DPD_FIREBASE_API_KEY` / `DPD_FIREBASE_ANDROID_CERT` (default unset — DPD's NL guest API path unavailable, PT path unaffected), `POSTBOX_REFRESH_STALE_AFTER_MINUTES` (default `30`), `POSTBOX_REFRESH_MAX_CONCURRENT_PROBES` (default `4`), `POSTBOX_REFRESH_DELIVERED_GRACE_DAYS` (default `3`), and `POSTBOX_CARRIER_<ID>_<KEY>` per carrier. Example: `PORT=18080 ./gradlew run`.
+- Defaults live in HOCON at `backend/src/main/resources/application.conf`; env vars override them via the `${?VAR}` optional-substitution pattern merged with `ConfigFactory.systemEnvironment()` in `ConfigLoader.load` (`backend/.../Config.kt`). Overridable keys: `PORT` (default `8080`), `JWT_SECRET`, `SQLITE_PATH` (default `data/postbox.db`), `DATA_DIR` (default `data`), `POSTBOX_ENV` (default `dev`), `DHL_API_KEY` (default unset — DHL adapter disabled), `DPD_FIREBASE_API_KEY` / `DPD_FIREBASE_ANDROID_CERT` (default unset — DPD's NL guest API path unavailable, PT path unaffected), `POSTBOX_REFRESH_STALE_AFTER_MINUTES` (default `30`), `POSTBOX_REFRESH_MAX_CONCURRENT_PROBES` (default `4`), `POSTBOX_REFRESH_DELIVERED_GRACE_DAYS` (default `3`), and `POSTBOX_CARRIER_<ID>_<KEY>` per carrier. Example: `PORT=18080 ./gradlew run`.
 - To add a new env-overridable key, declare the default and then a second line `key = ${?ENV_VAR}` — in HOCON the later assignment wins and `${?...}` is dropped when the var is unset.
-- `JWT_SECRET` ships a dev-only insecure default in `application.conf`; it MUST be overridden via env in any real deployment.
+- `JWT_SECRET` ships a dev-only insecure default in `application.conf`; it MUST be overridden via env in any real deployment. With `POSTBOX_ENV=production` (the container image sets this) the app refuses to boot on the default secret.
 - Port already in use → `BindException`, logged with a hint to set `PORT` to a free port.
 
 ## Tests
@@ -146,4 +148,4 @@ is the Vite + React SPA; `docker/` is a placeholder (README only) reserved for a
 ## Housekeeping
 
 - `.gitignore` already covers `.plan/`, `.gradle/`, `build/`, `data/`, `*.db*` — never commit build outputs or the SQLite data dir.
-- No CI workflows yet; `./gradlew check` is the gate.
+- `.github/workflows/docker-publish.yml` builds and pushes the image to GHCR on `v*` tags; `./gradlew check` is the QA gate.
