@@ -6,8 +6,8 @@ import com.postbox.carrier.CarrierId
  * Format rules that map a tracking number to a ranked candidate carrier list.
  * A format is a hint, never proof: the parallel probe decides. Rules are listed
  * strongest first, so the first candidate is the provisional pick when no carrier
- * knows the number yet. v1 covers DHL, CTT, Paack and EcoScooting; the PostNL and
- * DPD rules ship with their adapters.
+ * knows the number yet. v1 covers DHL, CTT, PostNL, Paack and EcoScooting; the DPD
+ * rules ship with its adapter.
  *
  * Letter-prefixed formats are matched case-insensitively (carriers normalize to
  * uppercase themselves); EcoScooting's own lookup is case-sensitive, so its rules
@@ -18,6 +18,8 @@ object TrackingNumberRules {
     private const val MinPaackCandidateLength = 4
 
     private val cttS10Pt = Regex("""^[A-Z]{2}\d{9}PT$""")
+    private val postnlS10Nl = Regex("""^[A-Z]{2}\d{9}NL$""")
+    private val postnl3s = Regex("""^3S[A-Z]{1,4}\d{7,12}$""")
     private val cttNumeric = Regex("""^\d{22}(\d{3})?$""")
     private val dhlExpress = Regex("""^\d{10}$""")
     private val dhlEcommerce = Regex("""^GM\d{16}$""")
@@ -33,6 +35,8 @@ object TrackingNumberRules {
         val upper = number.uppercase()
         val candidates = linkedSetOf<CarrierId>()
         if (cttS10Pt.matches(upper) && hasValidS10CheckDigit(upper)) candidates += CarrierId.CTT
+        if (postnlS10Nl.matches(upper) && hasValidS10CheckDigit(upper)) candidates += CarrierId.POSTNL
+        if (postnl3s.matches(upper)) candidates += CarrierId.POSTNL
         if (cttNumeric.matches(number)) candidates += CarrierId.CTT
         if (dhlExpress.matches(number)) candidates += CarrierId.DHL
         if (dhlEcommerce.matches(upper)) candidates += CarrierId.DHL
