@@ -30,7 +30,7 @@ class TrackingNumberRulesTest {
     @Test
     fun `S10 format alone is not enough - wrong check digit or non-PT suffix drops the ctt candidate`() {
         assertEquals(listOf(CarrierId.PAACK), TrackingNumberRules.candidatesFor("RR000000000PT"))
-        assertEquals(listOf(CarrierId.PAACK), TrackingNumberRules.candidatesFor("DD506882333NL"))
+        assertEquals(listOf(CarrierId.POSTNL, CarrierId.PAACK), TrackingNumberRules.candidatesFor("DD506882333NL"))
     }
 
     @Test
@@ -48,6 +48,23 @@ class TrackingNumberRulesTest {
     fun `EcoScooting samples rank ecoscooting first`() {
         assertEquals(listOf(CarrierId.ECOSCOOTING, CarrierId.PAACK), TrackingNumberRules.candidatesFor("CNPRT42500041234024382386"))
         assertEquals(listOf(CarrierId.ECOSCOOTING, CarrierId.PAACK), TrackingNumberRules.candidatesFor("460357243181"))
+    }
+
+    @Test
+    fun `PostNL 3S samples rank postnl first, case-insensitive`() {
+        assertEquals(listOf(CarrierId.POSTNL, CarrierId.PAACK), TrackingNumberRules.candidatesFor("3SDKVX1477340"))
+        assertEquals(listOf(CarrierId.POSTNL, CarrierId.PAACK), TrackingNumberRules.candidatesFor("3sdKVX1477340"))
+        assertEquals(listOf(CarrierId.POSTNL, CarrierId.PAACK), TrackingNumberRules.candidatesFor("3SAB12345678901"))
+    }
+
+    @Test
+    fun `S10 ending in NL with a valid check digit ranks postnl first`() {
+        assertEquals(listOf(CarrierId.POSTNL, CarrierId.PAACK), TrackingNumberRules.candidatesFor("RR123456785NL"))
+    }
+
+    @Test
+    fun `S10 ending in NL with a wrong check digit drops the postnl candidate`() {
+        assertEquals(listOf(CarrierId.PAACK), TrackingNumberRules.candidatesFor("RR123456780NL"))
     }
 
     @Test

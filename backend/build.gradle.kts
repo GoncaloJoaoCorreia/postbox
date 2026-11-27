@@ -66,4 +66,8 @@ tasks.processTestResources {
         include("*.json")
         into("fixtures/paack")
     }
+    from(rootProject.file("docs/carriers/postnl/fixtures")) {
+        include("*.json")
+        into("fixtures/postnl")
+    }
 }
