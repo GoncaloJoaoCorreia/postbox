@@ -2,8 +2,7 @@
 
 Research date: 2026-11-27. Scope: the lookup behind the consumer tracking page on
 `tracking.postnl.nl` (the flow behind postnl.nl track & trace), so the adapter in
-[G-59](https://linear.app/gryphonforge/issue/G-59/postnl-adapter-consumer-tracking-with-postcode-metadata)
-can be implemented without repeating discovery. The official Shippingstatus API needs a
+`G-59` can be implemented without repeating discovery. The official Shippingstatus API needs a
 business relationship and is out of scope. Research only — no adapter code here.
 
 Verified live on 2026-11-27 against the API with the researcher's own parcel (3S… number
