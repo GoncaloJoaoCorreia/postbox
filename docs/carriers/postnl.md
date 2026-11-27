@@ -20,7 +20,7 @@ GET https://tracking.postnl.nl/track-and-trace/api/trackAndTrace/<BARCODE>-<COUN
 ```
 
 - The lookup key is one path segment `<barcode>-<country>-<postal code>`, e.g.
-  `3SDKVX1477340-PT-4250-004` or `RR123456789NL-NL-1234AB`. URL-encode if in doubt; the
+  `3SXXXX00000000-PT-4250-004` or `RR123456789NL-NL-1234AB`. URL-encode if in doubt; the
   barcode/country/postcode characters are all path-safe after uppercasing.
 - **No auth, no session bootstrap, no CSRF token, no special headers** — a plain GET with
   `Accept: application/json` and a normal `User-Agent` works cookie-less (verified).
@@ -157,7 +157,8 @@ entry in the UI list.
 ## Tracking number formats (for the detection engine rules)
 
 - **3S barcodes**: `3S` + 1–4 letter customer range + 7–12 digits, total 13 or 15 chars
-  (developer.postnl.nl). Real example: `3SDKVX1477340` (13). "Subtypes" like `3SKGJD…`
+  (developer.postnl.nl). A real 13-char 3S code was used for the live probes (recorded in
+  the G-70 comment). "Subtypes" like `3SKGJD…`
   are just different customer ranges — the prefix rule is the same:
   `^3S[A-Z]{1,4}\d{7,12}$` (case-insensitive).
 - **2S** letterbox parcels share the 3S shape with a 2S type.

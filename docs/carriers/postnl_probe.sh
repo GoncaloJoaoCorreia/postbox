@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # Reproducible PostNL consumer track & trace lookup (researched in G-70).
 # Usage: ./postnl_probe.sh <barcode> <country> <postcode> [language]
-#   barcode  e.g. 3SDKVX1477340 (3S...) or an S10 ending NL (RR123456789NL)
+#   barcode  e.g. 3SXXXX00000000 (3S...) or an S10 ending NL (RR123456789NL)
 #   country  ISO-2 delivery country, e.g. NL, PT, BE, LU
 #   postcode delivery postal code in the country's local format, e.g. 1234AB (NL), 4250-004 (PT)
 #   language en|nl|fr|de (default en); the param is effectively required
