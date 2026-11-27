@@ -159,6 +159,8 @@ fun Route.parcelRoutes(
                         lastCheckedAt = parcel.lastCheckedAt,
                         archivedAt = archivedAt,
                         lastCheckError = parcel.lastCheckError,
+                        lastCheckErrorCode = parcel.lastCheckErrorCode,
+                        rateLimitedUntil = parcel.rateLimitedUntil,
                         estimatedDeliveryAt = parcel.estimatedDeliveryAt,
                     )
                 }

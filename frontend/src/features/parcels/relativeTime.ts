@@ -14,6 +14,14 @@ function timeOfDay(date: Date): string {
   return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+export function formatTimeOfDay(iso: string): string {
+  return timeOfDay(new Date(iso));
+}
+
+export function isFutureIso(iso: string, now: number = Date.now()): boolean {
+  return new Date(iso).getTime() > now;
+}
+
 function isSameDay(a: Date, b: Date): boolean {
   return a.toDateString() === b.toDateString();
 }

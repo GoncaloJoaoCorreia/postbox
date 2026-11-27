@@ -104,6 +104,22 @@ describe("parcel list screen", () => {
     expect(screen.queryByText("Old gadget")).not.toBeInTheDocument();
   });
 
+  it("shows a throttled chip instead of the raw warning when the carrier is rate-limiting checks", async () => {
+    const parcel = makeParcel({
+      id: "p5",
+      displayName: "Sneakers",
+      lastCheckedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+      lastCheckError: "carrier rate limit hit (retry after 60s), data from 2026-11-26T10:00:00Z",
+      lastCheckErrorCode: "rate_limited",
+      rateLimitedUntil: new Date(Date.now() + 60 * 1000).toISOString(),
+    });
+    mswServer.use(http.get("*/api/v1/parcels", () => HttpResponse.json([parcel])));
+    renderApp();
+    expect(await screen.findByText(/carrier is rate-limiting checks/i)).toBeInTheDocument();
+    expect(screen.getByText(/showing data from 5 min ago/i)).toBeInTheDocument();
+    expect(screen.queryByText(/carrier rate limit hit/i)).not.toBeInTheDocument();
+  });
+
   it("filters by search text and sidebar view", async () => {
     mswServer.use(http.get("*/api/v1/parcels", () => HttpResponse.json(sampleParcels())));
     renderApp();

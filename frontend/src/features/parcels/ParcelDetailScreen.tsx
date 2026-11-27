@@ -6,7 +6,7 @@ import { UserMenu } from "../../app/UserMenu";
 import { carrierLabel, carrierTrackingUrl } from "./carriers";
 import { ExternalLinkIcon } from "./icons";
 import { detectionMethodLabel, STATUS_LABELS, statusChipClass } from "./parcelView";
-import { formatEta, formatEventTime, relativeTime } from "./relativeTime";
+import { formatEta, formatEventTime, formatTimeOfDay, isFutureIso, relativeTime } from "./relativeTime";
 import { useParcel, useParcelEvents, useRefreshParcel } from "./useParcels";
 
 export function ParcelDetailScreen() {
@@ -21,6 +21,9 @@ export function ParcelDetailScreen() {
   const trackingUrl = parcel
     ? carrierTrackingUrl(parcel.carrier, parcel.trackingNumber, parcel.metadata)
     : null;
+  const rateLimitedUntil = parcel?.rateLimitedUntil ?? null;
+  const rateLimitedActive = rateLimitedUntil !== null && isFutureIso(rateLimitedUntil);
+  const retryAtLabel = rateLimitedUntil !== null ? formatTimeOfDay(rateLimitedUntil) : null;
 
   async function handleRefresh() {
     if (!id) return;
@@ -88,13 +91,20 @@ export function ParcelDetailScreen() {
                     type="button"
                     className="btn-primary"
                     onClick={handleRefresh}
-                    disabled={refresh.isPending}
+                    disabled={refresh.isPending || rateLimitedActive}
+                    title={
+                      rateLimitedActive
+                        ? `The carrier is rate-limiting requests — automatic checks resume after ${retryAtLabel}`
+                        : undefined
+                    }
                   >
                     {refresh.isPending ? (
                       <>
                         <span className="spinner" aria-hidden="true" />
                         Refreshing…
                       </>
+                    ) : rateLimitedActive ? (
+                      `Rate-limited by carrier — retry available at ${retryAtLabel}`
                     ) : (
                       "Refresh tracking"
                     )}
@@ -111,10 +121,17 @@ export function ParcelDetailScreen() {
                     </a>
                   )}
                 </div>
-                {parcel.lastCheckError && (
-                  <p className="parcel-warning" role="status">
-                    {parcel.lastCheckError}
+                {parcel.lastCheckErrorCode === "rate_limited" ? (
+                  <p className="chip chip-orange parcel-throttled" role="status">
+                    Carrier is rate-limiting checks · showing data from{" "}
+                    {parcel.lastCheckedAt ? relativeTime(parcel.lastCheckedAt) : "never"}
                   </p>
+                ) : (
+                  parcel.lastCheckError && (
+                    <p className="parcel-warning" role="status">
+                      {parcel.lastCheckError}
+                    </p>
+                  )
                 )}
                 {refreshError && <p role="alert">{refreshError}</p>}
               </section>

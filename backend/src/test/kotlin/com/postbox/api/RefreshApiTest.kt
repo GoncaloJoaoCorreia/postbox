@@ -37,6 +37,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
@@ -75,6 +76,16 @@ class RefreshApiTest {
             delay(60.seconds)
             return FakeCarrier.deterministicResult(number)
         }
+    }
+
+    private class ThrottledAdapter(
+        override val carrier: CarrierId,
+        private val retryAfter: Duration,
+    ) : CarrierAdapter {
+        override val requiredMetadata: Map<String, MetadataField> = emptyMap()
+
+        override suspend fun track(number: String, metadata: Map<String, String>): TrackingResult =
+            throw CarrierError.RateLimited(retryAfter)
     }
 
     private fun carrierSettings(requestTimeoutMs: Long) = CarrierSettings(
@@ -264,6 +275,33 @@ class RefreshApiTest {
         }
 
     @Test
+    fun `a rate-limited carrier answers with a structured rate_limited code and retry time instead of failing`() =
+        withApp(
+            "refresh-rate-limited",
+            mapOf(CarrierId.DHL to ThrottledAdapter(CarrierId.DHL, 30.seconds)),
+        ) { _ ->
+            val token = adminToken()
+            val dhlId = createParcelWithCarrier(token, dhlNumber, "dhl")
+
+            val forced = postJson("/api/v1/parcels/$dhlId/refresh", "", token)
+            assertEquals(HttpStatusCode.OK, forced.status, "a 429 is a soft outcome, not an API failure")
+            val body = bodyJson(forced)
+            assertEquals("rate_limited", body.getValue("lastCheckErrorCode").jsonPrimitive.content)
+            assertNotNull(body["rateLimitedUntil"])
+            assertTrue(body.getValue("lastCheckError").jsonPrimitive.content.startsWith("carrier rate limit hit"))
+
+            val list = getJson("/api/v1/parcels", token)
+            assertEquals(HttpStatusCode.OK, list.status)
+            val listed = bodyJsonArray(list).map { it.jsonObject }
+                .associateBy { it.getValue("id").jsonPrimitive.content }
+            assertEquals(
+                "rate_limited",
+                listed.getValue(dhlId).getValue("lastCheckErrorCode").jsonPrimitive.content,
+                "the list must surface the same structured indicator",
+            )
+        }
+
+    @Test
     fun `a hanging carrier is cut off by its own probe timeout and the list still renders`() =
         withApp(
             "refresh-timeout",
@@ -395,6 +433,8 @@ class RefreshApiTest {
             lastCheckedAt = isoUtc(lastCheckedAt),
             archivedAt = null,
             lastCheckError = null,
+            lastCheckErrorCode = null,
+            rateLimitedUntil = null,
             estimatedDeliveryAt = null,
         )
     }
