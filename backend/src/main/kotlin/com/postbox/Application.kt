@@ -10,8 +10,10 @@ import com.postbox.api.setupRoutes
 import com.postbox.auth.AuthJwt
 import com.postbox.auth.JwtService
 import com.postbox.auth.PasswordHasher
+import com.postbox.auth.RefreshTokenService
 import com.postbox.auth.configureAuth
 import com.postbox.carrier.CarrierRegistry
+import com.postbox.db.DeviceSessionRepository
 import com.postbox.db.Migrations
 import com.postbox.db.ParcelRepository
 import com.postbox.db.UserRepository
@@ -78,6 +80,8 @@ fun Application.module(config: AppConfig, db: Database) {
     val users: UserRepository by dependencies
     val hasher: PasswordHasher by dependencies
     val jwtService: JwtService by dependencies
+    val sessions: DeviceSessionRepository by dependencies
+    val refreshTokens: RefreshTokenService by dependencies
     val registry: CarrierRegistry by dependencies
     val parcels: ParcelRepository by dependencies
     val detectionService: DetectionService by dependencies
@@ -94,10 +98,10 @@ fun Application.module(config: AppConfig, db: Database) {
         staticResources("/docs", "static")
         route("/api/v1") {
             setupRoutes(users, hasher)
-            authRoutes(users, hasher, jwtService)
+            authRoutes(users, hasher, jwtService, refreshTokens)
             authenticate(AuthJwt) {
-                meRoutes(users, hasher)
-                adminRoutes(users, hasher)
+                meRoutes(users, hasher, sessions)
+                adminRoutes(users, hasher, sessions)
                 parcelRoutes(parcels, detectionService, refreshService)
             }
         }

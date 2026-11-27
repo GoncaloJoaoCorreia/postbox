@@ -2,6 +2,7 @@ package com.postbox
 
 import com.postbox.auth.JwtService
 import com.postbox.auth.PasswordHasher
+import com.postbox.auth.RefreshTokenService
 import com.postbox.carrier.CarrierAdapter
 import com.postbox.carrier.CarrierClientSettings
 import com.postbox.carrier.CarrierHttpClients
@@ -14,6 +15,7 @@ import com.postbox.carrier.EcoScootingAdapter
 import com.postbox.carrier.PaackAdapter
 import com.postbox.carrier.PostCttAdapter
 import com.postbox.carrier.PostNlAdapter
+import com.postbox.db.DeviceSessionRepository
 import com.postbox.db.ParcelRepository
 import com.postbox.db.UserRepository
 import com.postbox.service.DefaultRefreshService
@@ -47,8 +49,10 @@ fun Application.appDependencies(config: AppConfig, db: Database) {
         provide { db }
         provide { UserRepository(resolve()) }
         provide { ParcelRepository(resolve()) }
+        provide { DeviceSessionRepository(resolve()) }
         provide { PasswordHasher() }
         provide { JwtService(resolve<AppConfig>().jwtSecret) }
+        provide { RefreshTokenService(resolve(), resolve<AppConfig>().auth.refreshTokenTtl) }
         provide<DetectionService> {
             RuleBasedDetectionService(resolve<CarrierRegistry>(), resolve<Map<CarrierId, CarrierRateLimiter>>())
         }

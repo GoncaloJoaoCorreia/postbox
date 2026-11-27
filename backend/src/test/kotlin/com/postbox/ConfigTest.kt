@@ -21,6 +21,7 @@ class ConfigTest {
             POSTBOX_REFRESH_STALE_AFTER_MINUTES = "5"
             POSTBOX_REFRESH_MAX_CONCURRENT_PROBES = "2"
             POSTBOX_REFRESH_DELIVERED_GRACE_DAYS = "7"
+            POSTBOX_AUTH_REFRESH_TOKEN_TTL_DAYS = "30"
             """.trimIndent()
         )
         val config = ConfigLoader.load(env = env)
@@ -31,6 +32,7 @@ class ConfigTest {
         assertEquals(5.minutes, config.refresh.staleAfter)
         assertEquals(2, config.refresh.maxConcurrentProbes)
         assertEquals(7.days, config.refresh.deliveredGrace)
+        assertEquals(30.days, config.auth.refreshTokenTtl)
     }
 
     @Test
@@ -44,6 +46,7 @@ class ConfigTest {
         assertEquals(30.minutes, config.refresh.staleAfter)
         assertEquals(4, config.refresh.maxConcurrentProbes)
         assertEquals(3.days, config.refresh.deliveredGrace)
+        assertEquals(90.days, config.auth.refreshTokenTtl)
         assertNull(config.dhlApiKey)
     }
 

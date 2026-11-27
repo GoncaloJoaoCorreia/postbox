@@ -20,13 +20,13 @@ class AutoMigrateTest {
                     buildList { while (rs.next()) add(rs.getInt(1)) }
                 } ?: emptyList()
             }
-            assertEquals(listOf(1, 2, 3, 4, 5), versions)
+            assertEquals(listOf(1, 2, 3, 4, 5, 6), versions)
             val tables = dbQuery(db) {
                 exec("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name") { rs ->
                     buildList { while (rs.next()) add(rs.getString(1)) }
                 } ?: emptyList()
             }
-            assertEquals(listOf("parcel_events", "parcels", "schema_version", "users"), tables)
+            assertEquals(listOf("device_sessions", "parcel_events", "parcels", "schema_version", "users"), tables)
             val userColumns = dbQuery(db) {
                 exec("SELECT name FROM pragma_table_info('users') ORDER BY name") { rs ->
                     buildList { while (rs.next()) add(rs.getString(1)) }
@@ -46,6 +46,19 @@ class AutoMigrateTest {
             assertTrue("estimated_delivery_at" in parcelColumns, "V4 must add parcels.estimated_delivery_at, got: $parcelColumns")
             assertTrue("last_check_error_code" in parcelColumns, "V5 must add parcels.last_check_error_code, got: $parcelColumns")
             assertTrue("rate_limited_until" in parcelColumns, "V5 must add parcels.rate_limited_until, got: $parcelColumns")
+            val sessionColumns = dbQuery(db) {
+                exec("SELECT name FROM pragma_table_info('device_sessions') ORDER BY name") { rs ->
+                    buildList { while (rs.next()) add(rs.getString(1)) }
+                } ?: emptyList()
+            }
+            assertEquals(
+                listOf(
+                    "created_at", "device_name", "expires_at", "id", "last_used_at",
+                    "previous_token_hash", "revoked_at", "token_hash", "user_id",
+                ),
+                sessionColumns,
+                "V6 must create the device_sessions table with the session columns",
+            )
             // applied_at must be fixed-width ISO-8601 UTC text so plain TEXT ordering stays chronological
             val appliedAt = dbQuery(db) {
                 exec("SELECT applied_at FROM schema_version WHERE version = 1") { rs ->
@@ -72,7 +85,7 @@ class AutoMigrateTest {
                     buildList { while (rs.next()) add(rs.getInt(1)) }
                 } ?: emptyList()
             }
-            assertEquals(listOf(1, 2, 3, 4, 5), versions, "each migration must be applied exactly once; a re-run must not re-apply it")
+            assertEquals(listOf(1, 2, 3, 4, 5, 6), versions, "each migration must be applied exactly once; a re-run must not re-apply it")
         } finally {
             closeDatabase(first)
             closeDatabase(second)
@@ -95,7 +108,7 @@ class AutoMigrateTest {
                     buildList { while (rs.next()) add(rs.getInt(1)) }
                 } ?: emptyList()
             }
-            assertEquals(listOf(1, 2, 3, 4, 5), versions, "a failed migration must not be recorded in schema_version")
+            assertEquals(listOf(1, 2, 3, 4, 5, 6), versions, "a failed migration must not be recorded in schema_version")
             val doomed = dbQuery(db) {
                 exec("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'doomed'") { rs ->
                     buildList { while (rs.next()) add(rs.getString(1)) }
