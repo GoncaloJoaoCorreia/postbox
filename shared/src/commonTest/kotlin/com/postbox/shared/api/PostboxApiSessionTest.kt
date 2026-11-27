@@ -96,6 +96,49 @@ class PostboxApiSessionTest {
     }
 
     @Test
+    fun transientRefreshFailureKeepsTokensAndSurfacesOriginalError() = runTest {
+        val engine = MockEngine { request ->
+            when (request.url.encodedPath) {
+                "/api/v1/auth/refresh" -> respond(
+                    err("boom", "server exploded"),
+                    HttpStatusCode.InternalServerError,
+                    headersOf(HttpHeaders.ContentType, "application/json")
+                )
+                else -> respond(err("unauthorized", "expired"), HttpStatusCode.Unauthorized, headersOf(HttpHeaders.ContentType, "application/json"))
+            }
+        }
+        val tokens = RecordingTokenStorage()
+        val api = PostboxApi("http://localhost:8080", tokens, engine)
+
+        val e = assertFailsWith<ApiException> { api.listParcels() }
+        assertEquals("unauthorized", e.code)
+        assertEquals(401, e.status)
+        assertEquals("old-access", tokens.accessToken())
+        assertEquals("old-refresh", tokens.refreshToken())
+    }
+
+    @Test
+    fun retryUnauthorizedAfterRotationClearsTokensAndThrowsSessionExpired() = runTest {
+        val engine = MockEngine { request ->
+            when {
+                request.url.encodedPath == "/api/v1/auth/refresh" ->
+                    respond(rotatedSession, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+                request.headers[HttpHeaders.Authorization] == "Bearer new-access" ->
+                    respond(err("unauthorized", "still rejected"), HttpStatusCode.Unauthorized, headersOf(HttpHeaders.ContentType, "application/json"))
+                else ->
+                    respond(err("unauthorized", "expired"), HttpStatusCode.Unauthorized, headersOf(HttpHeaders.ContentType, "application/json"))
+            }
+        }
+        val tokens = RecordingTokenStorage()
+        val api = PostboxApi("http://localhost:8080", tokens, engine)
+
+        assertFailsWith<SessionExpiredException> { api.listParcels() }
+        assertNull(tokens.accessToken())
+        assertNull(tokens.refreshToken())
+        assertNull(tokens.sessionId())
+    }
+
+    @Test
     fun publicCall401DoesNotTriggerRefresh() = runTest {
         var refreshCalls = 0
         val engine = MockEngine { request ->

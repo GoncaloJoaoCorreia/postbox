@@ -48,6 +48,8 @@ class PostboxApi(
     private val docsApi = DocsApi(base, httpClient)
     private val refreshMutex = Mutex()
 
+    private enum class RefreshOutcome { Rotated, SessionDead, TransientFailure }
+
     override suspend fun listParcels(): List<Parcel> =
         callAuthed { parcelsApi.listParcels() }.map { it.toDomain() }
 
@@ -103,26 +105,39 @@ class PostboxApi(
         if (response.success) return response.body()
         if (response.status == 401) {
             val hadSession = tokenStorage.refreshToken() != null
-            if (hadSession && refreshSilently()) {
-                val retry = block()
-                if (retry.success) return retry.body()
-                throw retry.toApiException()
+            if (hadSession) {
+                when (refreshSilently()) {
+                    RefreshOutcome.Rotated -> {
+                        val retry = block()
+                        if (retry.success) return retry.body()
+                        if (retry.status == 401) {
+                            tokenStorage.clear()
+                            throw SessionExpiredException()
+                        }
+                        throw retry.toApiException()
+                    }
+                    RefreshOutcome.SessionDead -> throw SessionExpiredException()
+                    RefreshOutcome.TransientFailure -> throw response.toApiException()
+                }
             }
-            throw if (hadSession) SessionExpiredException() else response.toApiException()
+            throw response.toApiException()
         }
         throw response.toApiException()
     }
 
-    private suspend fun refreshSilently(): Boolean = refreshMutex.withLock {
-        val refreshToken = tokenStorage.refreshToken() ?: return@withLock false
+    private suspend fun refreshSilently(): RefreshOutcome = refreshMutex.withLock {
+        val refreshToken = tokenStorage.refreshToken() ?: return@withLock RefreshOutcome.SessionDead
         val response = authApi.postRefresh(RefreshRequest(refreshToken = refreshToken))
-        if (!response.success) {
-            if (response.status == 401) tokenStorage.clear()
-            return@withLock false
+        if (response.success) {
+            val session = response.body().toSession()
+            tokenStorage.save(session.accessToken, session.refreshToken, session.sessionId)
+            RefreshOutcome.Rotated
+        } else if (response.status == 401) {
+            tokenStorage.clear()
+            RefreshOutcome.SessionDead
+        } else {
+            RefreshOutcome.TransientFailure
         }
-        val session = response.body().toSession()
-        tokenStorage.save(session.accessToken, session.refreshToken, session.sessionId)
-        true
     }
 
     private suspend fun <T : Any> HttpResponse<T>.toApiException(): ApiException {
