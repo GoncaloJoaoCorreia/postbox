@@ -1,6 +1,8 @@
 # AGENTS.md — postbox
 
-Kotlin/Ktor monorepo. The only Gradle module is `:backend` (the server); `frontend/`
+Kotlin/Ktor monorepo. Gradle modules: `:backend` (the server), plus the mobile modules
+`:shared` (Kotlin Multiplatform library: OpenAPI client, SQLDelight cache, secure storage)
+and `:composeApp` (Compose Multiplatform Android shell); `frontend/`
 is the Vite + React SPA; `docker/Dockerfile` is the single-container image (SPA + API +
 SQLite in one jar), published to GHCR by `.github/workflows/release.yml` on every push to
 `main` (and by `.github/workflows/docker-publish.yml` on manually pushed `v*` tags).
@@ -106,8 +108,10 @@ SQLite in one jar), published to GHCR by `.github/workflows/release.yml` on ever
 
 ## Commands
 
-- `./gradlew check` — compile + run all tests (the QA gate for this repo)
+- `./gradlew check` — compile + run all tests, all modules incl. `:shared`/`:composeApp` (the QA gate for this repo)
 - `./gradlew :backend:test` — backend tests only
+- `./gradlew :shared:check` — mobile shared-module tests only
+- `./gradlew :composeApp:assembleDebug` — build the Android debug APK (needs `ANDROID_HOME`; `minSdk` 26, `compileSdk`/`targetSdk` 36)
 - `./gradlew :backend:test --tests "com.postbox.HealthzTest"` — run a single test class
 - `./gradlew run` — start the server (blocking, foreground); then `curl http://localhost:8080/healthz` → `{"status":"ok"}`
 - `./gradlew :backend:shadowJar` — fat jar at `backend/build/libs/postbox.jar` (embeds `frontend/dist` as `web/` when it exists; this is what `docker/Dockerfile` runs)
@@ -124,6 +128,7 @@ SQLite in one jar), published to GHCR by `.github/workflows/release.yml` on ever
  `PaackAdapter` (the consumer tracking endpoint on `paack.co` — no credentials, requires the delivery `postcode` as parcel metadata) is registered the same way whenever the `postbox.carriers.paack` config block is present (always, with the shipped defaults). `EcoScootingAdapter` (Cainiao's public link gateway behind EcoScooting's consumer tracking page, no API key) registers the same way whenever the `postbox.carriers.ecoscooting` config block is present. `PostNlAdapter` (the consumer track & trace endpoint on `tracking.postnl.nl` — no credentials, requires the delivery `postcode` as parcel metadata, country derived from the postcode shape) registers the same way whenever the `postbox.carriers.postnl` config block is present.
  `PaackAdapter` (the consumer tracking endpoint on `paack.co` — no credentials, requires the delivery `postcode` as parcel metadata) is registered the same way whenever the `postbox.carriers.paack` config block is present (always, with the shipped defaults). `EcoScootingAdapter` (Cainiao's public link gateway behind EcoScooting's consumer tracking page, no API key) registers the same way whenever the `postbox.carriers.ecoscooting` config block is present. `DpdAdapter` (per-country DPD tracking, PT-first — PT via the `tracking.dpd.pt` HTML tracker, NL via the myDPD guest JSON API on `www.dpdgroup.com`; researched in G-71) registers the same way whenever the `postbox.carriers.dpd` config block is present (always, with the shipped defaults); the non-PT guest path additionally needs `DPD_FIREBASE_API_KEY` / `DPD_FIREBASE_ANDROID_CERT` (public myDPD app-bundle values, never committed) and degrades to `CarrierUnavailable` without them.
 - Logging is structured JSON on the console: Logback + LogstashEncoder, config at `backend/src/main/resources/logback.xml`.
+- Mobile: `:shared` is a KMP library on the AGP 9 `com.android.kotlin.multiplatform.library` plugin (targets: android + jvm; the `jvm` target exists for fast tests only — its in-memory stores/driver must never be used in app code). Layers: `api` (openapi-generator ktor client generated from `docs/openapi.yaml` at build time; the `{"error":{"code","message"}}` envelope maps to a typed `ApiException`; generated API models never leave this layer), `domain.model` (own models), `cache` (SQLDelight `PostboxCache` + row mappers), `repository` (cache-first with network sync, exposes `Flow`s via sqldelight coroutines-extensions), `storage` (expect/actual `TokenStorage` / `InstanceSessionStore` over `PlatformContext`). `:composeApp` is a plain Android app module (AGP built-in Kotlin) with type-safe navigation routes (`Routes.kt`); `PostboxDependencies` in `:shared` is the composition root (stores + api + repository). iOS later: add `iosX64`/`iosArm64`/`iosSimulatorArm64` targets to `:shared` with Keychain/darwin actuals.
 
 ## Config
 

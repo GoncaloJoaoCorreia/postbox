@@ -50,7 +50,12 @@ jobs:
           echo "version=$ver" >> "$GITHUB_OUTPUT"
           echo "tag=v$ver" >> "$GITHUB_OUTPUT"
 
-      - name: Run backend tests
+      - name: Install Android SDK components
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-36" "build-tools;36.1.0"
+
+      - name: Run all module tests
         run: ./gradlew check
 
       - name: Run frontend tests

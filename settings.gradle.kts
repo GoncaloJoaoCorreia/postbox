@@ -2,6 +2,7 @@ rootProject.name = "postbox"
 
 pluginManagement {
     repositories {
+        google()
         mavenCentral()
         gradlePluginPortal()
     }
@@ -9,8 +10,11 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositories {
+        google()
         mavenCentral()
     }
 }
 
 include("backend")
+include("shared")
+include("composeApp")
