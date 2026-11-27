@@ -18,3 +18,4 @@ dependencyResolutionManagement {
 include("backend")
 include("shared")
 include("composeApp")
+include("androidApp")

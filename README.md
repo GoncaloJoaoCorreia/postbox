@@ -41,7 +41,8 @@ Monorepo layout:
 - `backend/` — Kotlin 2.x / Ktor 3.x (Netty) server (`:backend`)
 - `frontend/` — Vite + React + TypeScript SPA
 - `shared/` — Kotlin Multiplatform library for the mobile apps (`:shared`): OpenAPI-generated API client, SQLDelight cache, secure token/session storage
-- `composeApp/` — Compose Multiplatform Android app shell (`:composeApp`)
+- `composeApp/` — Compose Multiplatform UI module for the mobile apps (`:composeApp`, android target; iOS targets later)
+- `androidApp/` — Android app entry point (`:androidApp`): manifest, `MainActivity`, application class
 - `docker/` — single-container `Dockerfile` and `docker-compose.yml`
 - `docs/` — OpenAPI contract (`docs/openapi.yaml`), carrier research + fixtures, screenshots
 
