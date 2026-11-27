@@ -27,7 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.runtime.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.postbox.shared.instance.InstanceProbeResult
 import com.postbox.shared.instance.InstanceRepository
@@ -87,8 +87,9 @@ class InstanceSetupViewModel(private val instanceRepository: InstanceRepository)
 @Composable
 fun InstanceSetupScreen(viewModel: InstanceSetupViewModel, onConnected: (Boolean) -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(state.connectedSetupPending) { setupPending ->
-        if (setupPending != null) onConnected(setupPending)
+    val connectedSetupPending = state.connectedSetupPending
+    LaunchedEffect(connectedSetupPending) {
+        if (connectedSetupPending != null) onConnected(connectedSetupPending)
     }
 
     val normalized = InstanceUrl.normalize(state.input)

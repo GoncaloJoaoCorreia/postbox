@@ -10,6 +10,7 @@ import com.postbox.shared.domain.model.ParcelEvent
 import com.postbox.shared.domain.model.TrackingStatus
 import java.io.IOException
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant
 import kotlin.test.Test
@@ -59,7 +60,7 @@ class ParcelRepositoryTest {
     fun networkSyncPopulatesCacheAndCacheServesWhenOffline() = runTest {
         val remote = FakeRemote(parcels = listOf(parcel("p1")))
         val db = newDb()
-        val repo = ParcelRepository(remote, db, testDispatcher)
+        val repo = ParcelRepository(remote, db, StandardTestDispatcher(testScheduler))
 
         assertEquals("p1", repo.listParcels().single().id)
 
@@ -72,7 +73,7 @@ class ParcelRepositoryTest {
     @Test
     fun detailFallsBackToCacheOnFailure() = runTest {
         val remote = FakeRemote(parcels = listOf(parcel("p1")))
-        val repo = ParcelRepository(remote, newDb(), testDispatcher)
+        val repo = ParcelRepository(remote, newDb(), StandardTestDispatcher(testScheduler))
         repo.listParcels()
 
         remote.failure = IOException("offline")
@@ -82,7 +83,7 @@ class ParcelRepositoryTest {
     @Test
     fun apiErrorSurfacesWhenCacheIsEmpty() = runTest {
         val remote = FakeRemote(failure = ApiException("unauthorized", "A valid bearer token is required", 401))
-        val repo = ParcelRepository(remote, newDb(), testDispatcher)
+        val repo = ParcelRepository(remote, newDb(), StandardTestDispatcher(testScheduler))
         val e = assertFailsWith<ApiException> { repo.listParcels() }
         assertEquals("unauthorized", e.code)
         assertEquals(401, e.status)
@@ -91,7 +92,7 @@ class ParcelRepositoryTest {
     @Test
     fun parcelsFlowEmitsCachedParcels() = runTest {
         val remote = FakeRemote(parcels = listOf(parcel("p1")))
-        val repo = ParcelRepository(remote, newDb(), testDispatcher)
+        val repo = ParcelRepository(remote, newDb(), StandardTestDispatcher(testScheduler))
         repo.listParcels()
 
         assertEquals("p1", repo.parcelsFlow().first().single().id)

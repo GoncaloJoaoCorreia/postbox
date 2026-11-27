@@ -19,10 +19,11 @@ import com.postbox.shared.domain.model.UserAccount
 import com.postbox.shared.storage.TokenStorage
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.plugins.auth.Auth
+import io.ktor.client.plugins.auth.providers.BearerTokens
+import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -36,8 +37,13 @@ class PostboxApi(
     private val json = Json { ignoreUnknownKeys = true }
     private val httpClient = HttpClient(engine) {
         install(ContentNegotiation) { json(json) }
-        defaultRequest {
-            tokenStorage.accessToken()?.let { header(HttpHeaders.Authorization, "Bearer $it") }
+        install(Auth) {
+            bearer {
+                cacheTokens = false
+                loadTokens {
+                    tokenStorage.accessToken()?.let { BearerTokens(accessToken = it, refreshToken = tokenStorage.refreshToken()) }
+                }
+            }
         }
     }
     private val base = baseUrl.trimEnd('/')
