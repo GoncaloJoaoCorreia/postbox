@@ -15,7 +15,7 @@ argon2-jvm = "2.12"
 shadow = "9.6.1"
 # Mobile (G-129), pinned at scaffold time (2026-11-27); latest stable releases.
 agp = "9.5.3"
-compose-multiplatform = "1.12.2"
+compose-multiplatform = "1.11.1"
 sqldelight = "2.4.1"
 openapi-generator = "7.14.0"
 androidx-work = "2.12.0"
@@ -53,6 +53,7 @@ exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "e
 exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
+sqldelight-coroutines-extensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
 sqldelight-android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
 sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
 androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
@@ -71,6 +72,7 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 openapi-generator = { id = "org.openapi.generator", version.ref = "openapi-generator" }

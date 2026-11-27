@@ -2,16 +2,18 @@ package com.postbox.mobile
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
-import com.postbox.shared.storage.createInstanceSessionStore
+import com.postbox.shared.PostboxDependencies
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val session = createInstanceSessionStore(this)
+        enableEdgeToEdge()
+        val dependencies = PostboxDependencies(this)
         setContent {
             PostboxTheme {
-                PostboxApp(baseUrl = session.baseUrl())
+                PostboxApp(baseUrl = dependencies.sessionStore.baseUrl())
             }
         }
     }

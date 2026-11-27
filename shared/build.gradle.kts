@@ -1,18 +1,23 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.AbstractKotlinCompile
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.library)
+    id("com.android.kotlin.multiplatform.library")
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.sqldelight)
     alias(libs.plugins.openapi.generator)
 }
 
 kotlin {
-    androidTarget {
+    android {
+        namespace = "com.postbox.shared"
+        compileSdk = 36
+        minSdk = 26
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
+        withHostTest { }
     }
     jvm()
 
@@ -26,6 +31,7 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.sqldelight.coroutines.extensions)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -43,18 +49,11 @@ kotlin {
     }
 }
 
-android {
-    namespace = "com.postbox.shared"
-    compileSdk = 36
-    defaultConfig {
-        minSdk = 26
-    }
-}
-
 sqldelight {
     databases {
         create("PostboxCache") {
             packageName.set("com.postbox.shared.cache.db")
+            dialect("app.cash.sqldelight:sqlite-3-38-dialect:${libs.versions.sqldelight.get()}")
         }
     }
 }
@@ -82,8 +81,6 @@ kotlin.sourceSets.named("commonMain") {
     kotlin.srcDir(layout.buildDirectory.dir("generated/openapi/src/commonMain/kotlin"))
 }
 
-tasks.configureEach {
-    if (name.startsWith("compile")) {
-        dependsOn("openApiGenerate")
-    }
+tasks.withType<AbstractKotlinCompile<*>>().configureEach {
+    dependsOn("openApiGenerate")
 }

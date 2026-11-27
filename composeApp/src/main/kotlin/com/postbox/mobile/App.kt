@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 
 @Composable
 fun PostboxApp(baseUrl: String?) {
@@ -12,12 +13,12 @@ fun PostboxApp(baseUrl: String?) {
         return
     }
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = "parcels") {
-        composable("parcels") {
-            ParcelListScreen(onParcelClick = { id -> navController.navigate("parcels/$id") })
+    NavHost(navController = navController, startDestination = ParcelListRoute) {
+        composable<ParcelListRoute> {
+            ParcelListScreen(onParcelClick = { id -> navController.navigate(ParcelDetailRoute(id)) })
         }
-        composable("parcels/{id}") { entry ->
-            ParcelDetailScreen(parcelId = entry.arguments?.getString("id").orEmpty())
+        composable<ParcelDetailRoute> { entry ->
+            ParcelDetailScreen(parcelId = entry.toRoute<ParcelDetailRoute>().parcelId)
         }
     }
 }
