@@ -17,6 +17,11 @@ data class CarrierSettings(
     val minRequestIntervalMs: Long,
 )
 
+/** Auth settings parsed from the `postbox.auth` block. */
+data class AuthSettings(
+    val refreshTokenTtl: Duration = 90.days,
+)
+
 /** On-demand refresh tuning parsed from the `postbox.refresh` block. */
 data class RefreshSettings(
     val staleAfter: Duration,
@@ -49,6 +54,7 @@ data class AppConfig(
         maxConcurrentProbes = 4,
         deliveredGrace = 3.days,
     ),
+    val auth: AuthSettings = AuthSettings(),
 ) {
     init {
         if (env == "production" && jwtSecret == DEFAULT_JWT_SECRET) {
@@ -101,6 +107,9 @@ object ConfigLoader {
                 staleAfter = config.getInt("postbox.refresh.staleAfterMinutes").minutes,
                 maxConcurrentProbes = config.getInt("postbox.refresh.maxConcurrentProbes"),
                 deliveredGrace = config.getInt("postbox.refresh.deliveredGraceDays").days,
+            ),
+            auth = AuthSettings(
+                refreshTokenTtl = config.getInt("postbox.auth.refreshTokenTtlDays").days,
             ),
         )
     }

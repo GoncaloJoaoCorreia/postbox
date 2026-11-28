@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Refresh-token auth with device sessions for mobile clients (G-128): `POST /api/v1/auth/login` now also returns a `refreshToken` and the `sessionId` of a newly created device session (optional `deviceName` in the request, e.g. "Pixel 9", defaults to "Unknown device"), backed by a new `device_sessions` table (migration V6) that stores only the SHA-256 hash of the refresh token; `POST /api/v1/auth/refresh` rotates the refresh token and returns a fresh 24h access JWT — replaying an already-rotated token is detected and revokes the whole session, and revoked/expired/unknown tokens answer `401` with `error.code: invalid-refresh-token`; refresh tokens live 90 days with a sliding TTL extended on every successful refresh (configurable via `POSTBOX_AUTH_REFRESH_TOKEN_TTL_DAYS`); `GET /api/v1/me/devices` lists the caller's sessions and `DELETE /api/v1/me/devices/{id}` revokes one (`404` for other users' ids, same as parcels); all of a user's sessions are revoked on password change (`PATCH /api/v1/me`) and on admin deactivation (`PATCH /api/v1/admin/users/{id}`); documented in `docs/openapi.yaml`
+
 ## [0.1.0] - 2026-11-27
 
 ### Added
