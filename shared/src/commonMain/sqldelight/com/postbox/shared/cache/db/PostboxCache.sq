@@ -28,6 +28,12 @@ CREATE TABLE parcelEvent (
 
 CREATE INDEX parcelEvent_parcel_idx ON parcelEvent(parcel_id, occurred_at DESC);
 
+CREATE TABLE notified_status (
+    parcel_id TEXT NOT NULL REFERENCES parcel(id) ON DELETE CASCADE,
+    status TEXT NOT NULL,
+    PRIMARY KEY (parcel_id, status)
+);
+
 selectParcels:
 SELECT * FROM parcel
 WHERE archived_at IS NULL
@@ -89,3 +95,14 @@ DELETE FROM parcelEvent;
 
 clearParcels:
 DELETE FROM parcel;
+
+selectNotifiedStatuses:
+SELECT status FROM notified_status
+WHERE parcel_id = ?;
+
+insertNotifiedStatus:
+INSERT OR IGNORE INTO notified_status (parcel_id, status)
+VALUES (?, ?);
+
+clearNotifiedStatuses:
+DELETE FROM notified_status;

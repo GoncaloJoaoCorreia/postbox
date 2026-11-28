@@ -33,7 +33,9 @@ import androidx.lifecycle.viewModelScope
 import com.postbox.shared.api.ApiException
 import com.postbox.shared.domain.model.Parcel
 import com.postbox.shared.domain.model.TrackingStatus
+import com.postbox.shared.notification.StatusChangeNotifier
 import com.postbox.shared.repository.ParcelRepository
+import com.postbox.shared.storage.SyncSettingsStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -48,7 +50,11 @@ data class ParcelListUiState(
     val error: String? = null
 )
 
-class ParcelListViewModel(private val repository: ParcelRepository) : ViewModel() {
+class ParcelListViewModel(
+    private val repository: ParcelRepository,
+    private val syncSettings: SyncSettingsStore,
+    private val notifier: StatusChangeNotifier
+) : ViewModel() {
     private val _showArchived = MutableStateFlow(false)
     private val _isSyncing = MutableStateFlow(false)
     private val _error = MutableStateFlow<String?>(null)
@@ -77,7 +83,8 @@ class ParcelListViewModel(private val repository: ParcelRepository) : ViewModel(
             _isSyncing.value = true
             _error.value = null
             try {
-                repository.listParcels()
+                val changes = repository.syncParcels()
+                if (syncSettings.notificationsEnabled()) notifier.notifyStatusChanges(changes)
             } catch (e: ApiException) {
                 _error.value = e.message
             } catch (e: Exception) {

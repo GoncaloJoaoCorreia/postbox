@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,7 +85,7 @@ class AppViewModel(
 }
 
 @Composable
-fun PostboxApp(dependencies: PostboxDependencies, deviceName: String) {
+fun PostboxApp(dependencies: PostboxDependencies, deviceName: String, pendingParcelId: String? = null) {
     val viewModel: AppViewModel = viewModel { AppViewModel(dependencies, deviceName) }
     val gate by viewModel.gate.collectAsStateWithLifecycle()
 
@@ -108,17 +109,27 @@ fun PostboxApp(dependencies: PostboxDependencies, deviceName: String) {
             viewModel = viewModel { LoginViewModel(dependencies.authRepository(), deviceName) },
             onLoggedIn = viewModel::onLoggedIn
         )
-        AppGate.Main -> MainNav(dependencies)
+        AppGate.Main -> MainNav(dependencies, pendingParcelId)
     }
 }
 
 @Composable
-private fun MainNav(dependencies: PostboxDependencies) {
+private fun MainNav(dependencies: PostboxDependencies, pendingParcelId: String? = null) {
     val navController = rememberNavController()
+    LaunchedEffect(pendingParcelId) {
+        val parcelId = pendingParcelId ?: return@LaunchedEffect
+        navController.navigate(ParcelDetailRoute(parcelId))
+    }
     NavHost(navController = navController, startDestination = ParcelListRoute) {
         composable<ParcelListRoute> {
             ParcelListScreen(
-                viewModel = viewModel { ParcelListViewModel(dependencies.repository()) },
+                viewModel = viewModel {
+                    ParcelListViewModel(
+                        dependencies.repository(),
+                        dependencies.syncSettings,
+                        dependencies.statusChangeNotifier
+                    )
+                },
                 onParcelClick = { id -> navController.navigate(ParcelDetailRoute(id)) },
                 onAccountClick = { navController.navigate(AccountRoute) },
                 onAddClick = { navController.navigate(AddParcelRoute) }
@@ -140,7 +151,11 @@ private fun MainNav(dependencies: PostboxDependencies) {
             )
         }
         composable<AccountRoute> {
-            AccountScreen(authRepository = dependencies.authRepository())
+            AccountScreen(
+                authRepository = dependencies.authRepository(),
+                syncSettings = dependencies.syncSettings,
+                context = dependencies.context
+            )
         }
     }
 }

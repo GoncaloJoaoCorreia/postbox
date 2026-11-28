@@ -14,6 +14,8 @@ import com.postbox.shared.domain.model.Carrier
 import com.postbox.shared.domain.model.DetectionResult
 import com.postbox.shared.domain.model.Parcel
 import com.postbox.shared.domain.model.ParcelEvent
+import com.postbox.shared.sync.ParcelStatusChange
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -103,9 +105,44 @@ class ParcelRepository(
     ): Parcel =
         remote.createParcel(trackingNumber, displayName, carrier, metadata).also { persistParcels(listOf(it)) }
 
+    suspend fun syncParcels(): List<ParcelStatusChange> {
+        val previous = withContext(ioDispatcher) {
+            db.postboxCacheQueries.selectAllParcels().executeAsList()
+                .associateBy { it.id }
+                .mapValues { (_, row) -> row.toParcel() }
+        }
+        val incoming = try {
+            remote.listParcels()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (previous.isEmpty()) throw e else return emptyList()
+        }
+        val changes = incoming.mapNotNull { parcel ->
+            val old = previous[parcel.id]
+            if (old != null && old.status != parcel.status && old.archivedAt == null && parcel.archivedAt == null) {
+                ParcelStatusChange(parcel = parcel, previousStatus = old.status, newStatus = parcel.status)
+            } else null
+        }
+        persistParcels(incoming)
+        return withContext(ioDispatcher) {
+            val queries = db.postboxCacheQueries
+            changes.filter { change ->
+                val notified = queries.selectNotifiedStatuses(change.parcel.id).executeAsList().toSet()
+                if (change.newStatus.name in notified) {
+                    false
+                } else {
+                    queries.insertNotifiedStatus(change.parcel.id, change.newStatus.name)
+                    true
+                }
+            }
+        }
+    }
+
     suspend fun clearCache() = withContext(ioDispatcher) {
         db.postboxCacheQueries.clearEvents()
         db.postboxCacheQueries.clearParcels()
+        db.postboxCacheQueries.clearNotifiedStatuses()
     }
 
     private suspend fun persistParcels(parcels: List<Parcel>) = withContext(ioDispatcher) {
