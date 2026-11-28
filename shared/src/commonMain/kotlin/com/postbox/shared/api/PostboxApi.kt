@@ -7,11 +7,15 @@ import com.postbox.shared.api.endpoints.ParcelsApi
 import com.postbox.shared.api.endpoints.SetupApi
 import com.postbox.shared.api.infrastructure.HttpResponse
 import com.postbox.shared.api.model.ChangePasswordRequest
+import com.postbox.shared.api.model.CreateParcelRequest
+import com.postbox.shared.api.model.DetectRequest
 import com.postbox.shared.api.model.ErrorResponse
 import com.postbox.shared.api.model.LoginRequest
 import com.postbox.shared.api.model.RefreshRequest
 import com.postbox.shared.api.model.SetupRequest
+import com.postbox.shared.domain.model.Carrier
 import com.postbox.shared.domain.model.DeviceSessionInfo
+import com.postbox.shared.domain.model.DetectionResult
 import com.postbox.shared.domain.model.Parcel
 import com.postbox.shared.domain.model.ParcelEvent
 import com.postbox.shared.domain.model.Session
@@ -67,6 +71,29 @@ class PostboxApi(
 
     override suspend fun refreshParcel(id: String): Parcel =
         callAuthed { parcelsApi.refreshParcel(id) }.toDomain()
+
+    override suspend fun detect(trackingNumber: String, carrier: Carrier?, metadata: Map<String, String>): DetectionResult =
+        callAuthed {
+            parcelsApi.detectCarrier(
+                DetectRequest(
+                    trackingNumber = trackingNumber,
+                    carrier = carrier?.toApi(),
+                    metadata = metadata.ifEmpty { null }
+                )
+            )
+        }.toDomain()
+
+    override suspend fun createParcel(trackingNumber: String, displayName: String?, carrier: Carrier?, metadata: Map<String, String>): Parcel =
+        callAuthed {
+            parcelsApi.createParcel(
+                CreateParcelRequest(
+                    trackingNumber = trackingNumber,
+                    displayName = displayName,
+                    carrier = carrier?.toApi(),
+                    metadata = metadata.ifEmpty { null }
+                )
+            )
+        }.toDomain()
 
     suspend fun healthz(): String =
         callPublic { docsApi.getHealthz() }.status
