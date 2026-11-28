@@ -13,6 +13,7 @@ import com.postbox.shared.api.model.ErrorResponse
 import com.postbox.shared.api.model.LoginRequest
 import com.postbox.shared.api.model.RefreshRequest
 import com.postbox.shared.api.model.SetupRequest
+import com.postbox.shared.api.model.UpdateParcelRequest
 import com.postbox.shared.domain.model.Carrier
 import com.postbox.shared.domain.model.DeviceSessionInfo
 import com.postbox.shared.domain.model.DetectionResult
@@ -71,6 +72,28 @@ class PostboxApi(
 
     override suspend fun refreshParcel(id: String): Parcel =
         callAuthed { parcelsApi.refreshParcel(id) }.toDomain()
+
+    override suspend fun updateParcel(
+        id: String,
+        displayName: String?,
+        archived: Boolean?,
+        carrier: Carrier?,
+        metadata: Map<String, String>?
+    ): Parcel =
+        callAuthed {
+            parcelsApi.updateParcel(
+                id,
+                UpdateParcelRequest(
+                    displayName = displayName,
+                    archived = archived,
+                    carrier = carrier?.toApi(),
+                    metadata = metadata
+                )
+            )
+        }.toDomain()
+
+    override suspend fun deleteParcel(id: String): Unit =
+        callAuthed { parcelsApi.deleteParcel(id) }
 
     override suspend fun detect(trackingNumber: String, carrier: Carrier?, metadata: Map<String, String>): DetectionResult =
         callAuthed {

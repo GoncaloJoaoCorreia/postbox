@@ -25,9 +25,15 @@ class ParcelRepository(
     private val db: PostboxCache,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
-    fun parcelsFlow(): Flow<List<Parcel>> =
-        db.postboxCacheQueries.selectParcels().asFlow()
-            .map { query -> query.executeAsList().map { it.toParcel() } }
+    fun parcelsFlow(includeArchived: Boolean = false): Flow<List<Parcel>> {
+        val query = if (includeArchived) {
+            db.postboxCacheQueries.selectAllParcels()
+        } else {
+            db.postboxCacheQueries.selectParcels()
+        }
+        return query.asFlow()
+            .map { q -> q.executeAsList().map { it.toParcel() } }
+    }
 
     fun parcelEventsFlow(parcelId: String): Flow<List<ParcelEvent>> =
         db.postboxCacheQueries.selectEventsByParcel(parcelId).asFlow()
@@ -68,6 +74,23 @@ class ParcelRepository(
 
     suspend fun refreshParcel(id: String): Parcel =
         remote.refreshParcel(id).also { persistParcels(listOf(it)) }
+
+    suspend fun updateParcel(
+        id: String,
+        displayName: String? = null,
+        archived: Boolean? = null,
+        carrier: Carrier? = null,
+        metadata: Map<String, String>? = null
+    ): Parcel =
+        remote.updateParcel(id, displayName, archived, carrier, metadata).also { persistParcels(listOf(it)) }
+
+    suspend fun deleteParcel(id: String) {
+        remote.deleteParcel(id)
+        withContext(ioDispatcher) {
+            db.postboxCacheQueries.deleteEventsForParcel(id)
+            db.postboxCacheQueries.deleteParcel(id)
+        }
+    }
 
     suspend fun detect(trackingNumber: String, carrier: Carrier? = null, metadata: Map<String, String> = emptyMap()): DetectionResult =
         remote.detect(trackingNumber, carrier, metadata)
