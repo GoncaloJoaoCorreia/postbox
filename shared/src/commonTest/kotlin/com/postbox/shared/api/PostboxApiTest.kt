@@ -16,6 +16,7 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -190,5 +191,46 @@ class PostboxApiTest {
         assertEquals("jwt-access", session.accessToken)
         assertEquals("opaque-refresh", session.refreshToken)
         assertEquals("33333333-3333-3333-3333-333333333333", session.sessionId)
+    }
+
+    @Test
+    fun updateParcelPatchesAndParsesParcel() = runTest {
+        val body = """{"id":"11111111-1111-1111-1111-111111111111","trackingNumber":"1Z999","displayName":"Renamed","status":"IN_TRANSIT","createdAt":"2026-11-27T10:00:00Z","latestEvent":null,"carrier":"dhl","archivedAt":"2026-11-28T09:00:00Z"}"""
+        val engine = MockEngine { request ->
+            assertEquals(HttpMethod.Patch, request.method)
+            assertEquals("/api/v1/parcels/11111111-1111-1111-1111-111111111111", request.url.encodedPath)
+            val sent = requestBodyText(request)
+            assertTrue(sent.contains("\"displayName\":\"Renamed\""))
+            assertTrue(sent.contains("\"archived\":true"))
+            respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+        }
+        val api = PostboxApi("http://localhost:8080", FakeTokenStorage(), engine)
+        val parcel = api.updateParcel("11111111-1111-1111-1111-111111111111", displayName = "Renamed", archived = true)
+        assertEquals("Renamed", parcel.displayName)
+        assertEquals(Instant.parse("2026-11-28T09:00:00Z"), parcel.archivedAt)
+    }
+
+    @Test
+    fun updateParcelSendsMetadataForTheMissingCarrierMetadataFlow() = runTest {
+        val body = """{"id":"11111111-1111-1111-1111-111111111111","trackingNumber":"RR123456789PT","displayName":"RR123456789PT","status":"UNKNOWN","createdAt":"2026-11-27T10:00:00Z","latestEvent":null,"carrier":"postnl","metadata":{"postcode":"1234AB"}}"""
+        val engine = MockEngine { request ->
+            assertEquals(HttpMethod.Patch, request.method)
+            assertTrue(requestBodyText(request).contains("\"postcode\":\"1234AB\""))
+            respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+        }
+        val api = PostboxApi("http://localhost:8080", FakeTokenStorage(), engine)
+        val parcel = api.updateParcel("11111111-1111-1111-1111-111111111111", metadata = mapOf("postcode" to "1234AB"))
+        assertEquals("1234AB", parcel.metadata?.get("postcode"))
+    }
+
+    @Test
+    fun deleteParcelSendsDelete() = runTest {
+        val engine = MockEngine { request ->
+            assertEquals(HttpMethod.Delete, request.method)
+            assertEquals("/api/v1/parcels/11111111-1111-1111-1111-111111111111", request.url.encodedPath)
+            respond("", HttpStatusCode.NoContent)
+        }
+        val api = PostboxApi("http://localhost:8080", FakeTokenStorage(), engine)
+        api.deleteParcel("11111111-1111-1111-1111-111111111111")
     }
 }

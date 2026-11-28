@@ -18,12 +18,16 @@ import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 private class FakeRemote(
     var parcels: List<Parcel> = emptyList(),
     var failure: Exception? = null,
     var detection: DetectionResult = DetectionResult("1Z999", Carrier.dhl, DetectionMethod.probe, listOf(Carrier.dhl)),
-    var created: Parcel? = null
+    var created: Parcel? = null,
+    var updated: Parcel? = null,
+    var events: List<ParcelEvent> = emptyList(),
+    val deleted: MutableList<String> = mutableListOf()
 ) : ParcelsRemoteDataSource {
     override suspend fun listParcels(): List<Parcel> = failure?.let { throw it } ?: parcels
 
@@ -31,10 +35,18 @@ private class FakeRemote(
         failure?.let { throw it } ?: parcels.first { it.id == id }
 
     override suspend fun listParcelEvents(id: String): List<ParcelEvent> =
-        failure?.let { throw it } ?: emptyList()
+        failure?.let { throw it } ?: events
 
     override suspend fun refreshParcel(id: String): Parcel =
         failure?.let { throw it } ?: parcels.first { it.id == id }
+
+    override suspend fun updateParcel(id: String, displayName: String?, archived: Boolean?, carrier: Carrier?, metadata: Map<String, String>?): Parcel =
+        failure?.let { throw it } ?: updated ?: parcels.first { it.id == id }
+
+    override suspend fun deleteParcel(id: String) {
+        failure?.let { throw it }
+        deleted.add(id)
+    }
 
     override suspend fun detect(trackingNumber: String, carrier: Carrier?, metadata: Map<String, String>): DetectionResult =
         failure?.let { throw it } ?: detection
@@ -117,6 +129,56 @@ class ParcelRepositoryTest {
 
         assertEquals(DetectionMethod.probe, result.method)
         assertEquals(Carrier.dhl, result.carrier)
+    }
+
+    @Test
+    fun updateParcelPersistsToCacheSoItSurvivesOffline() = runTest {
+        val archived = parcel("p1").copy(
+            displayName = "Renamed",
+            archivedAt = Instant.parse("2026-11-28T09:00:00Z")
+        )
+        val remote = FakeRemote(parcels = listOf(parcel("p1")), updated = archived)
+        val db = newDb()
+        val repo = ParcelRepository(remote, db, StandardTestDispatcher(testScheduler))
+        repo.listParcels()
+
+        val result = repo.updateParcel("p1", displayName = "Renamed", archived = true)
+        assertEquals("Renamed", result.displayName)
+        assertEquals(Instant.parse("2026-11-28T09:00:00Z"), result.archivedAt)
+
+        remote.failure = IOException("offline")
+        assertEquals("Renamed", repo.parcelDetail("p1").displayName)
+        assertTrue(repo.parcelsFlow().first().isEmpty())
+        assertEquals("p1", repo.parcelsFlow(includeArchived = true).first().single().id)
+    }
+
+    @Test
+    fun deleteParcelRemovesParcelAndItsEventsFromCache() = runTest {
+        val remote = FakeRemote(parcels = listOf(parcel("p1")))
+        val db = newDb()
+        val repo = ParcelRepository(remote, db, StandardTestDispatcher(testScheduler))
+        repo.listParcels()
+        assertEquals(1, db.postboxCacheQueries.selectEventsByParcel("p1").executeAsList().size)
+
+        repo.deleteParcel("p1")
+
+        assertEquals(listOf("p1"), remote.deleted)
+        assertTrue(repo.parcelsFlow(includeArchived = true).first().isEmpty())
+        assertEquals(0, db.postboxCacheQueries.selectEventsByParcel("p1").executeAsList().size)
+    }
+
+    @Test
+    fun parcelEventsFlowEmitsNewestFirst() = runTest {
+        val events = listOf(
+            ParcelEvent("e-old", Instant.parse("2026-11-27T09:00:00Z"), TrackingStatus.IN_TRANSIT, "Picked up", null),
+            ParcelEvent("e-new", Instant.parse("2026-11-28T09:00:00Z"), TrackingStatus.OUT_FOR_DELIVERY, "Out for delivery", "Lisboa")
+        )
+        val remote = FakeRemote(parcels = listOf(parcel("p1")), events = events)
+        val repo = ParcelRepository(remote, newDb(), StandardTestDispatcher(testScheduler))
+
+        repo.parcelEvents("p1")
+
+        assertEquals(listOf("e-new", "e-old"), repo.parcelEventsFlow("p1").first().map { it.id })
     }
 
     @Test
