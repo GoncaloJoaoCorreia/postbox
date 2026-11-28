@@ -18,11 +18,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -35,6 +40,8 @@ import com.postbox.shared.api.ApiException
 import com.postbox.shared.auth.AuthRepository
 import com.postbox.shared.domain.model.DeviceSessionInfo
 import com.postbox.shared.domain.model.UserAccount
+import com.postbox.shared.storage.PlatformContext
+import com.postbox.shared.storage.SyncSettingsStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -124,9 +131,70 @@ class AccountViewModel(private val authRepository: AuthRepository) : ViewModel()
     }
 }
 
+@Composable
+private fun SyncSettingsSection(syncSettings: SyncSettingsStore, context: PlatformContext) {
+    var pollingEnabled by remember { mutableStateOf(syncSettings.backgroundPollingEnabled()) }
+    var notificationsEnabled by remember { mutableStateOf(syncSettings.notificationsEnabled()) }
+    val requestPermission = rememberNotificationPermissionLauncher { granted ->
+        if (!granted) {
+            notificationsEnabled = false
+            syncSettings.setNotificationsEnabled(false)
+        }
+    }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Background sync & notifications", style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Background polling", style = MaterialTheme.typography.bodyMedium)
+                Switch(
+                    checked = pollingEnabled,
+                    onCheckedChange = { enabled ->
+                        pollingEnabled = enabled
+                        syncSettings.setBackgroundPollingEnabled(enabled)
+                        if (enabled) scheduleParcelSync(context) else cancelParcelSync(context)
+                    }
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Status-change notifications", style = MaterialTheme.typography.bodyMedium)
+                Switch(
+                    checked = notificationsEnabled,
+                    onCheckedChange = { enabled ->
+                        if (enabled) {
+                            notificationsEnabled = true
+                            syncSettings.setNotificationsEnabled(true)
+                            requestPermission()
+                        } else {
+                            notificationsEnabled = false
+                            syncSettings.setNotificationsEnabled(false)
+                        }
+                    }
+                )
+            }
+            Text(
+                "While the app is closed it syncs about every 15 minutes. On idle devices (Doze / App Standby) the OS can delay background work, so notifications may arrive late.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AccountScreen(authRepository: AuthRepository) {
+fun AccountScreen(
+    authRepository: AuthRepository,
+    syncSettings: SyncSettingsStore,
+    context: PlatformContext
+) {
     val viewModel: AccountViewModel = viewModel { AccountViewModel(authRepository) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -151,6 +219,9 @@ fun AccountScreen(authRepository: AuthRepository) {
                         Text("Role: ${state.account?.role}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
+            }
+            item {
+                SyncSettingsSection(syncSettings = syncSettings, context = context)
             }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

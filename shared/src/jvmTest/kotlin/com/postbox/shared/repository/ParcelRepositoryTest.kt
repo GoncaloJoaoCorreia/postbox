@@ -203,4 +203,86 @@ class ParcelRepositoryTest {
         assertEquals("4250-004", cached.metadata?.get("postcode"))
         assertEquals("p-new", repo.parcelsFlow().first().single().id)
     }
+
+    @Test
+    fun syncParcelsDetectsStatusChangeOncePerParcelAndStatus() = runTest {
+        val remote = FakeRemote(parcels = listOf(parcel("p1")))
+        val repo = ParcelRepository(remote, newDb(), StandardTestDispatcher(testScheduler))
+        repo.listParcels()
+
+        remote.parcels = listOf(parcel("p1").copy(status = TrackingStatus.OUT_FOR_DELIVERY))
+        val changes = repo.syncParcels()
+        assertEquals(1, changes.size)
+        assertEquals("p1", changes.single().parcel.id)
+        assertEquals(TrackingStatus.IN_TRANSIT, changes.single().previousStatus)
+        assertEquals(TrackingStatus.OUT_FOR_DELIVERY, changes.single().newStatus)
+
+        assertTrue(repo.syncParcels().isEmpty())
+
+        remote.parcels = listOf(parcel("p1").copy(status = TrackingStatus.DELIVERED))
+        val delivered = repo.syncParcels()
+        assertEquals(TrackingStatus.DELIVERED, delivered.single().newStatus)
+    }
+
+    @Test
+    fun syncParcelsIgnoresUnchangedNewAndArchivedParcels() = runTest {
+        val remote = FakeRemote(parcels = listOf(parcel("p1")))
+        val repo = ParcelRepository(remote, newDb(), StandardTestDispatcher(testScheduler))
+        repo.listParcels()
+
+        assertTrue(repo.syncParcels().isEmpty())
+
+        remote.parcels = listOf(parcel("p1"), parcel("p2"))
+        assertTrue(repo.syncParcels().isEmpty())
+
+        remote.parcels = listOf(
+            parcel("p1").copy(
+                status = TrackingStatus.DELIVERED,
+                archivedAt = Instant.parse("2026-11-28T09:00:00Z")
+            )
+        )
+        assertTrue(repo.syncParcels().isEmpty())
+    }
+
+    @Test
+    fun syncParcelsPersistsNewStatusAndReportsNothingOffline() = runTest {
+        val remote = FakeRemote(parcels = listOf(parcel("p1")))
+        val repo = ParcelRepository(remote, newDb(), StandardTestDispatcher(testScheduler))
+        repo.listParcels()
+
+        remote.parcels = listOf(parcel("p1").copy(status = TrackingStatus.EXCEPTION))
+        assertEquals(1, repo.syncParcels().size)
+        assertEquals(TrackingStatus.EXCEPTION, repo.parcelsFlow(includeArchived = true).first().single().status)
+
+        remote.failure = IOException("offline")
+        assertTrue(repo.syncParcels().isEmpty())
+    }
+
+    @Test
+    fun syncParcelsThrowsWhenOfflineAndCacheIsEmpty() = runTest {
+        val remote = FakeRemote(failure = IOException("offline"))
+        val repo = ParcelRepository(remote, newDb(), StandardTestDispatcher(testScheduler))
+
+        assertFailsWith<IOException> { repo.syncParcels() }
+    }
+
+    @Test
+    fun clearCacheResetsStatusChangeDedup() = runTest {
+        val remote = FakeRemote(parcels = listOf(parcel("p1")))
+        val repo = ParcelRepository(remote, newDb(), StandardTestDispatcher(testScheduler))
+        repo.listParcels()
+
+        remote.parcels = listOf(parcel("p1").copy(status = TrackingStatus.OUT_FOR_DELIVERY))
+        assertEquals(1, repo.syncParcels().size)
+
+        repo.clearCache()
+        repo.listParcels()
+        assertEquals(TrackingStatus.OUT_FOR_DELIVERY, repo.parcelsFlow(includeArchived = true).first().single().status)
+
+        remote.parcels = listOf(parcel("p1").copy(status = TrackingStatus.IN_TRANSIT))
+        repo.listParcels()
+        remote.parcels = listOf(parcel("p1").copy(status = TrackingStatus.OUT_FOR_DELIVERY))
+        val changes = repo.syncParcels()
+        assertEquals(TrackingStatus.OUT_FOR_DELIVERY, changes.single().newStatus)
+    }
 }

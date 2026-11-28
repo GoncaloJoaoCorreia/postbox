@@ -6,21 +6,32 @@ import com.postbox.shared.cache.db.PostboxCache
 import com.postbox.shared.db.CacheDriverProvider
 import com.postbox.shared.db.createCacheDriverProvider
 import com.postbox.shared.instance.InstanceRepository
+import com.postbox.shared.notification.StatusChangeNotifier
+import com.postbox.shared.notification.createStatusChangeNotifier
 import com.postbox.shared.repository.ParcelRepository
 import com.postbox.shared.storage.InstanceSessionStore
 import com.postbox.shared.storage.PlatformContext
+import com.postbox.shared.storage.SyncSettingsStore
 import com.postbox.shared.storage.TokenStorage
 import com.postbox.shared.storage.createInstanceSessionStore
+import com.postbox.shared.storage.createSyncSettingsStore
 import com.postbox.shared.storage.createTokenStorage
+import com.postbox.shared.sync.ParcelStatusChange
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 
+interface DependenciesProvider {
+    val dependencies: PostboxDependencies
+}
+
 class PostboxDependencies(
-    context: PlatformContext,
+    val context: PlatformContext,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
     val tokenStorage: TokenStorage = createTokenStorage(context)
     val sessionStore: InstanceSessionStore = createInstanceSessionStore(context)
+    val syncSettings: SyncSettingsStore = createSyncSettingsStore(context)
+    val statusChangeNotifier: StatusChangeNotifier = createStatusChangeNotifier(context)
     private val cacheDriverProvider: CacheDriverProvider = createCacheDriverProvider(context)
     private val db by lazy { PostboxCache(cacheDriverProvider.createDriver()) }
     private var api: PostboxApi? = null
@@ -64,6 +75,12 @@ class PostboxDependencies(
 
     fun instanceRepository(): InstanceRepository =
         InstanceRepository(sessionStore, ::clearLocalData) { probeApi(it) }
+
+    suspend fun syncParcelsAndNotify(): List<ParcelStatusChange> {
+        val changes = repository().syncParcels()
+        if (syncSettings.notificationsEnabled()) statusChangeNotifier.notifyStatusChanges(changes)
+        return changes
+    }
 
     private suspend fun clearLocalData() {
         tokenStorage.clear()
