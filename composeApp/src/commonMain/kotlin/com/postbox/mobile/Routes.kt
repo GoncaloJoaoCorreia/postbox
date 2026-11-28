@@ -9,6 +9,9 @@ sealed interface AppRoute
 data object ParcelListRoute : AppRoute
 
 @Serializable
+data object AddParcelRoute : AppRoute
+
+@Serializable
 data class ParcelDetailRoute(val parcelId: String) : AppRoute
 
 @Serializable

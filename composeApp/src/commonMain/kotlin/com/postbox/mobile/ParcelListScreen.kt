@@ -13,12 +13,13 @@ import androidx.compose.ui.Modifier
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ParcelListScreen(onParcelClick: (String) -> Unit, onAccountClick: () -> Unit) {
+fun ParcelListScreen(onParcelClick: (String) -> Unit, onAccountClick: () -> Unit, onAddClick: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Parcels") },
                 actions = {
+                    TextButton(onClick = onAddClick) { Text("Add") }
                     TextButton(onClick = onAccountClick) { Text("Account") }
                 }
             )

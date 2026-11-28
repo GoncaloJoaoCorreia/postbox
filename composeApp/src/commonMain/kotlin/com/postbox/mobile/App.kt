@@ -119,11 +119,23 @@ private fun MainNav(dependencies: PostboxDependencies) {
         composable<ParcelListRoute> {
             ParcelListScreen(
                 onParcelClick = { id -> navController.navigate(ParcelDetailRoute(id)) },
-                onAccountClick = { navController.navigate(AccountRoute) }
+                onAccountClick = { navController.navigate(AccountRoute) },
+                onAddClick = { navController.navigate(AddParcelRoute) }
+            )
+        }
+        composable<AddParcelRoute> {
+            AddParcelScreen(
+                viewModel = viewModel { AddParcelViewModel(dependencies.repository()) },
+                onParcelCreated = { id -> navController.navigate(ParcelDetailRoute(id)) },
+                onNavigateUp = { navController.popBackStack() }
             )
         }
         composable<ParcelDetailRoute> { entry ->
-            ParcelDetailScreen(parcelId = entry.toRoute<ParcelDetailRoute>().parcelId)
+            val parcelId = entry.toRoute<ParcelDetailRoute>().parcelId
+            ParcelDetailScreen(
+                parcelId = parcelId,
+                viewModel = viewModel { ParcelDetailViewModel(dependencies.repository(), parcelId) }
+            )
         }
         composable<AccountRoute> {
             AccountScreen(authRepository = dependencies.authRepository())

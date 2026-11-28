@@ -2,6 +2,7 @@ package com.postbox.shared.api
 
 import com.postbox.shared.domain.model.Carrier
 import com.postbox.shared.domain.model.DetectionMethod
+import com.postbox.shared.domain.model.DetectionResult
 import com.postbox.shared.domain.model.MetadataField
 import com.postbox.shared.domain.model.Parcel
 import com.postbox.shared.domain.model.ParcelEvent
@@ -9,6 +10,7 @@ import com.postbox.shared.domain.model.Session
 import com.postbox.shared.domain.model.TrackingStatus
 import com.postbox.shared.api.model.Carrier as ApiCarrier
 import com.postbox.shared.api.model.DeviceSession as ApiDeviceSession
+import com.postbox.shared.api.model.DetectResponse as ApiDetectResponse
 import com.postbox.shared.api.model.DetectionMethod as ApiDetectionMethod
 import com.postbox.shared.api.model.LoginResponse
 import com.postbox.shared.api.model.MetadataField as ApiMetadataField
@@ -26,7 +28,16 @@ fun ApiTrackingStatus.toDomain(): TrackingStatus =
 
 fun ApiCarrier.toDomain(): Carrier? = runCatching { Carrier.valueOf(name) }.getOrNull()
 
+fun Carrier.toApi(): ApiCarrier = ApiCarrier.valueOf(name)
+
 fun ApiDetectionMethod.toDomain(): DetectionMethod? = runCatching { DetectionMethod.valueOf(name) }.getOrNull()
+
+fun ApiDetectResponse.toDomain(): DetectionResult = DetectionResult(
+    trackingNumber = trackingNumber,
+    carrier = carrier?.toDomain(),
+    method = method.toDomain() ?: DetectionMethod.rule,
+    candidates = candidates.mapNotNull { it.toDomain() }
+)
 
 fun ApiMetadataField.toDomain(): MetadataField = MetadataField(
     name = name,

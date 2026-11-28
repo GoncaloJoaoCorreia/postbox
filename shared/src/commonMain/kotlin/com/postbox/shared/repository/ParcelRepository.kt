@@ -10,6 +10,8 @@ import com.postbox.shared.cache.toEventRow
 import com.postbox.shared.cache.toParcel
 import com.postbox.shared.cache.toParcelEvent
 import com.postbox.shared.cache.toRow
+import com.postbox.shared.domain.model.Carrier
+import com.postbox.shared.domain.model.DetectionResult
 import com.postbox.shared.domain.model.Parcel
 import com.postbox.shared.domain.model.ParcelEvent
 import kotlinx.coroutines.CoroutineDispatcher
@@ -66,6 +68,17 @@ class ParcelRepository(
 
     suspend fun refreshParcel(id: String): Parcel =
         remote.refreshParcel(id).also { persistParcels(listOf(it)) }
+
+    suspend fun detect(trackingNumber: String, carrier: Carrier? = null, metadata: Map<String, String> = emptyMap()): DetectionResult =
+        remote.detect(trackingNumber, carrier, metadata)
+
+    suspend fun createParcel(
+        trackingNumber: String,
+        displayName: String? = null,
+        carrier: Carrier? = null,
+        metadata: Map<String, String> = emptyMap()
+    ): Parcel =
+        remote.createParcel(trackingNumber, displayName, carrier, metadata).also { persistParcels(listOf(it)) }
 
     suspend fun clearCache() = withContext(ioDispatcher) {
         db.postboxCacheQueries.clearEvents()

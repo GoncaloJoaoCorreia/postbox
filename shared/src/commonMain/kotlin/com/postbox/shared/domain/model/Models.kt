@@ -24,6 +24,14 @@ data class MetadataField(
 )
 
 @Serializable
+data class DetectionResult(
+    val trackingNumber: String,
+    val carrier: Carrier?,
+    val method: DetectionMethod,
+    val candidates: List<Carrier>
+)
+
+@Serializable
 data class ParcelEvent(
     val id: String,
     val occurredAt: Instant,
